@@ -24,7 +24,7 @@ BINARY_NAME := bsq
 all: $(BINARY_NAME)
 
 # Sources for this project
-SOURCE_FILES := main load_file_in_mem
+SOURCE_FILES := main load_file_in_mem set_largest_possible_square
 
 OBJECT_FILES := $(addprefix obj/, $(addsuffix .o, $(SOURCE_FILES)))
 

@@ -5,26 +5,18 @@
 ** Implements the main function
 */
 
+#include "set_largest_possible_square.h"
 #include "load_file_in_mem.h"
 #include "my/stdio.h"
 #include "my/stdlib.h"
 #include "my/string.h"
 #include "my/macros.h"
+#include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
 
-// board is a pointer to the board
-// num_rows is the amount of rows in the board
-// num_cols is the amount of columns in every row, including the newline
-// character
-struct board_information
-{
-    char *board;
-    size_t num_rows;
-    size_t num_cols;
-};
-
 static const int ERROR_EXIT_CODE = 84;
+static const int NO_ERROR_EXIT_CODE = 0;
 
 static bool verify_file(struct my_string *file_as_string,
     struct board_information *board_info)
@@ -49,24 +41,34 @@ static bool verify_file(struct my_string *file_as_string,
     return true;
 }
 
+MY_ATTRIBUTE((format(printf, 1, 2))) static int error(const char *format, ...)
+{
+    va_list args;
+
+    my_dputs("error: ", STDERR_FILENO);
+    va_start(args, format);
+    my_vdprintf(STDERR_FILENO, format, args);
+    va_end(args);
+    return ERROR_EXIT_CODE;
+}
+
 int main(int argc, char *argv[])
 {
     struct my_string *file_as_string;
     struct board_information board_info;
 
-    if (argc != 2) {
-        my_dprintf(STDERR_FILENO,
-            "Incorrect amount of arguments (should be 2, was %d)\n", argc);
-        return ERROR_EXIT_CODE;
-    }
+    if (argc != 2)
+        return error("Incorrect amount of arguments (should be 2, was %d)\n",
+            argc);
     file_as_string = load_file_in_mem(argv[1]);
-    if (!file_as_string) {
-        my_dprintf(STDERR_FILENO, "Failure to read file '%s'\n", argv[1]);
-        return ERROR_EXIT_CODE;
-    }
+    if (!file_as_string)
+        return error("Failure to read file '%s'\n", argv[1]);
     if (!verify_file(file_as_string, &board_info)) {
-        my_dprintf(STDERR_FILENO, "Invalid board in '%s'\n", argv[1]);
         my_string_free(file_as_string);
-        return ERROR_EXIT_CODE;
+        return error("Invalid board in '%s'\n", argv[1]);
     }
+    set_largest_possible_square(&board_info);
+    my_dputs(board_info.board, STDOUT_FILENO);
+    my_string_free(file_as_string);
+    return NO_ERROR_EXIT_CODE;
 }
