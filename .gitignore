@@ -1,2 +1,12 @@
-# lib file from libmy
+# Ignore files from libmy
 lib/libmy.a
+/include/my/
+/include/my.h
+
+# Ignore files we produce
+/bsq
+/obj/
+
+# Ignore files produced by the testsuite
+/tests/BSQ/mouli_maps/
+/tests/BSQ/mouli_maps_solved/
