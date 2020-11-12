@@ -28,14 +28,16 @@ static bool verify_file(struct my_string *file_as_string,
         return false;
     board_info->board = after_number + 1;
     board_info->num_cols = my_strcspn(board_info->board, "\n") + 1;
-    for (int i = 0; i < board_info->num_rows * board_info->num_cols; ++i)
-        if (((i + 1) % board_info->num_cols) == 0 && (i != 0)) {
-            if (board_info->board[i] != '\n')
-                return false;
-        }
-        else
-            if (board_info->board[i] != 'o' && board_info->board[i] != '.')
-                return false;
+    for (size_t i = 0; i < board_info->num_rows; ++i)
+        for (size_t j = 0; j < board_info->num_cols; ++j)
+            if (j == (board_info->num_cols - 1)) {
+                if (board_info->board[i * board_info->num_cols + j] != '\n')
+                    return false;
+            }
+            else
+                if (board_info->board[i * board_info->num_cols + j] != 'o' &&
+                    board_info->board[i * board_info->num_cols + j] != '.')
+                    return false;
     if (board_info->board[board_info->num_rows * board_info->num_cols] != '\0')
         return false;
     return true;
@@ -68,7 +70,8 @@ int main(int argc, char *argv[])
         return error("Invalid board in '%s'\n", argv[1]);
     }
     set_largest_possible_square(&board_info);
-    my_dputs(board_info.board, STDOUT_FILENO);
+    write(STDOUT_FILENO, board_info.board, board_info.num_cols
+        * board_info.num_rows);
     my_string_free(file_as_string);
     return NO_ERROR_EXIT_CODE;
 }
