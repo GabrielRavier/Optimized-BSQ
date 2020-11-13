@@ -33,7 +33,7 @@ static int *make_obstacle_amounts(const struct board_information *board_info)
     return result;
 }
 
-static bool check_square(const struct square *square,
+static bool check_valid_square(const struct square *square,
     const int *obstacle_amounts, const struct board_information *board_info)
 {
     int obstacles_bottom_right = obstacle_amounts[(square->i + square->size) *
@@ -71,7 +71,7 @@ void set_largest_possible_square(const struct board_information *board_info)
         for (size_t j = 0; j < (board_info->num_cols - 1); ++j) {
             while ((largest_square.size < (board_info->num_rows - i)) &&
                 (largest_square.size < (board_info->num_cols - 1 - j)) &&
-                    check_square(&((const struct square){i, j,
+                    check_valid_square(&((const struct square){i, j,
                         largest_square.size}),
                     obstacle_amounts, board_info)) {
                 largest_square.i = i;

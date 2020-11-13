@@ -5,7 +5,9 @@ cd "$(dirname "$0")"
 
 for i in mouli_maps/*
 do
+    # A bit of a cludge but it works, so... ¯\_(ツ)_/¯
     solved_filename=mouli_maps_solved/$(basename $i)
+
     # Use & to parallelize the tests
     cmp <(../../bsq "$i") "$solved_filename"&
 done
