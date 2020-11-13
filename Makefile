@@ -58,6 +58,8 @@ re: clean all
 
 tests_run:
 	$(MAKE) --directory=lib/my tests_binary
+	rm -rf obj/
+	$(MAKE) CFLAGS="$(CFLAGS) --coverage"
 	./lib/my/tests_binary
 	tar --extract --directory=tests/BSQ --file=tests/BSQ/maps-intermediate.tgz
 	./tests/BSQ/tester.sh
