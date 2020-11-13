@@ -40,7 +40,7 @@ static bool check_square(size_t i, size_t j, int largest_square_size,
         (i - 1) * board_info->num_cols + (j - 1)]);
     
     return (obstacles_bottom_right - obstacles_bottom_left -
-        obstacles_top_right + obstacles_top_left) > 0;
+        obstacles_top_right + obstacles_top_left) <= 0;
 }
 
 void set_largest_possible_square(const struct board_information *board_info)
