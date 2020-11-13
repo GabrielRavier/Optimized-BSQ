@@ -15,7 +15,7 @@ override CFLAGS += -Iinclude
 # We need to be able to link to libmy, and link to it
 override LDFLAGS += -Llib $(CFLAGS)
 
-.PHONY: all clean fclean re libmy
+.PHONY: all clean fclean re libmy tests_run
 
 .PREVIOUS: obj/%.o
 

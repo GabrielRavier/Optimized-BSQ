@@ -52,12 +52,29 @@ static bool check_valid_square(const struct square *square,
         obstacles_top_right + obstacles_top_left) <= 0;
 }
 
-void set_square(const struct board_information *board_info,
+static void set_square(const struct board_information *board_info,
     const struct square *square)
 {
     for (size_t i = 0; i < square->size; ++i)
         my_memset(&board_info->board[(square->i + i) *
             board_info->num_cols + square->j], 'x', square->size);
+}
+
+static void do_i_iteration(struct square *largest_square,
+    const struct board_information *board_info, const int *obstacle_amounts,
+    size_t i)
+{
+    for (size_t j = 0; j < (board_info->num_cols - 1); ++j) {
+        while ((largest_square->size < (board_info->num_rows - i)) &&
+               (largest_square->size < (board_info->num_cols - 1 - j)) &&
+               check_valid_square(&((const struct square){i, j,
+                           largest_square->size}),
+                   obstacle_amounts, board_info)) {
+            largest_square->i = i;
+            largest_square->j = j;
+            ++largest_square->size;
+        }
+    }
 }
 
 void set_largest_possible_square(const struct board_information *board_info)
@@ -68,17 +85,7 @@ void set_largest_possible_square(const struct board_information *board_info)
     for (size_t i = 0; i < board_info->num_rows; ++i) {
         if (largest_square.size >= (board_info->num_rows - i))
             break;
-        for (size_t j = 0; j < (board_info->num_cols - 1); ++j) {
-            while ((largest_square.size < (board_info->num_rows - i)) &&
-                (largest_square.size < (board_info->num_cols - 1 - j)) &&
-                    check_valid_square(&((const struct square){i, j,
-                        largest_square.size}),
-                    obstacle_amounts, board_info)) {
-                largest_square.i = i;
-                largest_square.j = j;
-                ++largest_square.size;
-            }
-        }
+        do_i_iteration(&largest_square, board_info, obstacle_amounts, i);
     }
     set_square(board_info, &largest_square);
     free(obstacle_amounts);
