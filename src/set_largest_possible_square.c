@@ -16,7 +16,7 @@ struct square {
     size_t size;
 };
 
-static int *make_obstable_amounts(const struct board_information *board_info)
+static int *make_obstacle_amounts(const struct board_information *board_info)
 {
     int *result = malloc(sizeof(int) *
          ((board_info->num_cols - 1) * board_info->num_rows));
@@ -63,7 +63,7 @@ void set_square(const struct board_information *board_info,
 void set_largest_possible_square(const struct board_information *board_info)
 {
     struct square largest_square = {0, 0, 0};
-    int *obstacle_amounts = make_obstable_amounts(board_info);
+    int *obstacle_amounts = make_obstacle_amounts(board_info);
 
     for (size_t i = 0; i < board_info->num_rows; ++i) {
         if (largest_square.size >= (board_info->num_rows - i))
