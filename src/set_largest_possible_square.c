@@ -10,6 +10,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+struct square {
+    size_t i;
+    size_t j;
+    size_t size;
+};
+
 static int *make_obstable_amounts(const struct board_information *board_info)
 {
     int *result = malloc(sizeof(int) *
@@ -43,29 +49,32 @@ static bool check_square(size_t i, size_t j, int largest_square_size,
         obstacles_top_right + obstacles_top_left) <= 0;
 }
 
+void set_square(const struct board_information *board_info, const struct square *square)
+{
+    for (size_t i = 0; i < square->size; ++i)
+        my_memset(&board_info->board[(square->i + i) *
+            board_info->num_cols + square->j], 'x', square->size);
+}
+
 void set_largest_possible_square(const struct board_information *board_info)
 {
-    size_t largest_square_i = 0;
-    size_t largest_square_j = 0;
-    int largest_square_size = 0;
+    struct square largest_square = {0, 0, 0};
     int *obstacle_amounts = make_obstable_amounts(board_info);
 
     for (size_t i = 0; i < board_info->num_rows; ++i) {
-        if (largest_square_size >= (board_info->num_rows - i))
+        if (largest_square.size >= (board_info->num_rows - i))
             break;
         for (size_t j = 0; j < (board_info->num_cols - 1); ++j) {
-            while ((largest_square_size < (board_info->num_rows - i)) &&
-                (largest_square_size < (board_info->num_cols - 1 - j)) &&
-                check_square(i, j, largest_square_size, obstacle_amounts,
+            while ((largest_square.size < (board_info->num_rows - i)) &&
+                (largest_square.size < (board_info->num_cols - 1 - j)) &&
+                check_square(i, j, largest_square.size, obstacle_amounts,
                     board_info)) {
-                largest_square_i = i;
-                largest_square_j = j;
-                ++largest_square_size;
+                largest_square.i = i;
+                largest_square.j = j;
+                ++largest_square.size;
             }
         }
     }
-    for (size_t i = 0; i < largest_square_size; ++i)
-        my_memset(&board_info->board[(largest_square_i + i) *
-            board_info->num_cols + largest_square_j], 'x', largest_square_size);
+    set_square(board_info, &largest_square);
     free(obstacle_amounts);
 }
