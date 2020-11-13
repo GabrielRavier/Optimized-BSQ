@@ -33,23 +33,25 @@ static int *make_obstable_amounts(const struct board_information *board_info)
     return result;
 }
 
-static bool check_square(size_t i, size_t j, int largest_square_size,
+static bool check_square(const struct square *square,
     const int *obstacle_amounts, const struct board_information *board_info)
 {
-    int obstacles_bottom_right = obstacle_amounts[(i + largest_square_size) *
-        board_info->num_cols + (j + largest_square_size)];
-    int obstacles_bottom_left = (j == 0 ? 0 : obstacle_amounts[
-        (i + largest_square_size) * board_info->num_cols + (j - 1)]);
-    int obstacles_top_right = (i == 0 ? 0 : obstacle_amounts[(i - 1) *
-        board_info->num_cols + (j + largest_square_size)]);
-    int obstacles_top_left = ((i == 0 || j == 0) ? 0 : obstacle_amounts[
-        (i - 1) * board_info->num_cols + (j - 1)]);
+    int obstacles_bottom_right = obstacle_amounts[(square->i + square->size) *
+        board_info->num_cols + (square->j + square->size)];
+    int obstacles_bottom_left = (square->j == 0 ? 0 : obstacle_amounts[
+        (square->i + square->size) * board_info->num_cols + (square->j - 1)]);
+    int obstacles_top_right = (square->i == 0 ? 0 : obstacle_amounts[
+        (square->i - 1) * board_info->num_cols + (square->j + square->size)]);
+    int obstacles_top_left = ((square->i == 0 || square->j == 0) ? 0 :
+        obstacle_amounts[(square->i - 1) * board_info->num_cols +
+        (square->j - 1)]);
     
     return (obstacles_bottom_right - obstacles_bottom_left -
         obstacles_top_right + obstacles_top_left) <= 0;
 }
 
-void set_square(const struct board_information *board_info, const struct square *square)
+void set_square(const struct board_information *board_info,
+    const struct square *square)
 {
     for (size_t i = 0; i < square->size; ++i)
         my_memset(&board_info->board[(square->i + i) *
@@ -67,8 +69,8 @@ void set_largest_possible_square(const struct board_information *board_info)
         for (size_t j = 0; j < (board_info->num_cols - 1); ++j) {
             while ((largest_square.size < (board_info->num_rows - i)) &&
                 (largest_square.size < (board_info->num_cols - 1 - j)) &&
-                check_square(i, j, largest_square.size, obstacle_amounts,
-                    board_info)) {
+                    check_square(&((struct square){i, j, largest_square.size}),
+                    obstacle_amounts, board_info)) {
                 largest_square.i = i;
                 largest_square.j = j;
                 ++largest_square.size;
