@@ -19,7 +19,7 @@ struct square {
 static int *make_obstacle_amounts(const struct board_information *board_info)
 {
     int *result = malloc(sizeof(int) *
-         ((board_info->num_cols - 1) * board_info->num_rows));
+        ((board_info->num_cols - 1) * board_info->num_rows));
     for (size_t i = 0; i < board_info->num_rows; ++i)
         for (size_t j = 0; j < (board_info->num_cols - 1); ++j)
             result[i * (board_info->num_cols - 1) + j] =
