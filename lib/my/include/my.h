@@ -7,4 +7,4 @@
 
 #pragma once
 
-#error "Please use the files from the my subdirectory instead of this file"
+#error "idk if I will make this include everything else later, but for now, no"
