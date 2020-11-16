@@ -66,10 +66,10 @@ static void do_i_iteration(struct square *largest_square,
 {
     for (size_t j = 0; j < (board_info->num_cols - 1); ++j) {
         while ((largest_square->size < (board_info->num_rows - i)) &&
-               (largest_square->size < (board_info->num_cols - 1 - j)) &&
-               check_valid_square(&((const struct square){i, j,
-                           largest_square->size}),
-                   obstacle_amounts, board_info)) {
+            (largest_square->size < (board_info->num_cols - 1 - j)) &&
+            check_valid_square(&((const struct square) { i, j,
+                        largest_square->size }),
+                obstacle_amounts, board_info)) {
             largest_square->i = i;
             largest_square->j = j;
             ++largest_square->size;
@@ -79,7 +79,7 @@ static void do_i_iteration(struct square *largest_square,
 
 void set_largest_possible_square(const struct board_information *board_info)
 {
-    struct square largest_square = {0, 0, 0};
+    struct square largest_square = { 0, 0, 0 };
     int *obstacle_amounts = make_obstacle_amounts(board_info);
 
     for (size_t i = 0; i < board_info->num_rows; ++i) {

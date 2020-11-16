@@ -22,8 +22,8 @@ static bool verify_file(struct my_string *file_as_string,
     struct board_information *board_info)
 {
     char *after_number;
-    board_info->num_rows = my_strtol_base_str(file_as_string->string,
-        &after_number, "0123456789");
+    board_info->num_rows =
+        my_strtol_base_str(file_as_string->string, &after_number, "0123456789");
     if (*after_number != '\n' || after_number == file_as_string->string)
         return false;
     board_info->board = after_number + 1;
@@ -33,11 +33,9 @@ static bool verify_file(struct my_string *file_as_string,
             if (j == (board_info->num_cols - 1)) {
                 if (board_info->board[i * board_info->num_cols + j] != '\n')
                     return false;
-            }
-            else
-                if (board_info->board[i * board_info->num_cols + j] != 'o' &&
-                    board_info->board[i * board_info->num_cols + j] != '.')
-                    return false;
+            } else if (board_info->board[i * board_info->num_cols + j] != 'o' &&
+                board_info->board[i * board_info->num_cols + j] != '.')
+                return false;
     if (board_info->board[board_info->num_rows * board_info->num_cols] != '\0')
         return false;
     return true;
@@ -70,8 +68,8 @@ int main(int argc, char *argv[])
         return error("Invalid board in '%s'\n", argv[1]);
     }
     set_largest_possible_square(&board_info);
-    write(STDOUT_FILENO, board_info.board, board_info.num_cols
-        * board_info.num_rows);
+    write(STDOUT_FILENO, board_info.board,
+        board_info.num_cols * board_info.num_rows);
     my_string_free(file_as_string);
     return NO_ERROR_EXIT_CODE;
 }
