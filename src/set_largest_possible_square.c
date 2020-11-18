@@ -47,7 +47,7 @@ static bool check_valid_square(const struct square *square,
     int obstacles_top_left = ((square->i == 0 || square->j == 0) ? 0 :
         obstacle_amounts[(square->i - 1) * (board_info->num_cols - 1) +
         (square->j - 1)]);
-    
+
     return (obstacles_bottom_right - obstacles_bottom_left -
         obstacles_top_right + obstacles_top_left) <= 0;
 }
