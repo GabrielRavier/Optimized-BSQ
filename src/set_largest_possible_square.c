@@ -37,6 +37,14 @@ static int *make_obstacle_amounts(const struct board_information *board_info)
     return result;
 }
 
+static void set_square(const struct board_information *board_info,
+    const struct square *square)
+{
+    for (size_t i = 0; i < square->size; ++i)
+        memset(&board_info->board[(square->i + i) *
+            board_info->num_cols + square->j], 'x', square->size);
+}
+
 static bool check_valid_square(const struct square *square,
     const int *obstacle_amounts, const struct board_information *board_info)
 {
@@ -54,14 +62,6 @@ static bool check_valid_square(const struct square *square,
 
     return (obstacles_bottom_right - obstacles_bottom_left -
         obstacles_top_right + obstacles_top_left) <= 0;
-}
-
-static void set_square(const struct board_information *board_info,
-    const struct square *square)
-{
-    for (size_t i = 0; i < square->size; ++i)
-        memset(&board_info->board[(square->i + i) *
-            board_info->num_cols + square->j], 'x', square->size);
 }
 
 static void do_i_iteration(struct square *largest_square,

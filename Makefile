@@ -73,7 +73,7 @@ fclean: clean
 
 # "Remakes" the project.
 re:
-> $(MAKE) clean
+> $(MAKE) fclean
 > $(MAKE) all
 
 tests_run: all
