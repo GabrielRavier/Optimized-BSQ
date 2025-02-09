@@ -2,7 +2,7 @@
 ## EPITECH PROJECT, 2020
 ## libmy
 ## File description:
-## Makefile for evalexpr
+## Makefile for bsq
 ##
 
 # We use `override` to enable setting part of CFLAGS on the command line
@@ -56,10 +56,6 @@ fclean: clean
 re: clean all
 	$(MAKE) --directory=lib/my re
 
-tests_run:
-	$(MAKE) --directory=lib/my tests_binary
-	rm -rf obj/
-	$(MAKE) CFLAGS="$(CFLAGS) --coverage"
-	./lib/my/tests_binary
+tests_run: all
 	tar --extract --directory=tests/BSQ --file=tests/BSQ/maps-intermediate.tgz
 	./tests/BSQ/tester.sh
