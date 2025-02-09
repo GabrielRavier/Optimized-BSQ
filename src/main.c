@@ -10,6 +10,7 @@
 static const int ERROR_EXIT_CODE = 84;
 static const int NO_ERROR_EXIT_CODE = 0;
 
+__attribute__((hot))
 static bool verify_file(struct loaded_file *file_as_buffer,
     struct board_information *board_info)
 {

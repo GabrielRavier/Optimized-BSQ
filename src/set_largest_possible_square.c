@@ -1,6 +1,7 @@
 #include "set_largest_possible_square.h"
 #include <string.h>
 #include <stdlib.h>
+#include <x86intrin.h>
 #include <stdbool.h>
 
 struct square {
@@ -9,6 +10,7 @@ struct square {
     size_t size;
 };
 
+__attribute__((hot))
 static int *make_obstacle_amounts(const struct board_information *board_info)
 {
     int *result = malloc(sizeof(int) *
@@ -45,6 +47,7 @@ static void set_square(const struct board_information *board_info,
             board_info->num_cols + square->j], 'x', square->size);
 }
 
+__attribute__((hot))
 static bool check_valid_square(const struct square *square,
     const int *obstacle_amounts, const struct board_information *board_info)
 {
@@ -64,6 +67,7 @@ static bool check_valid_square(const struct square *square,
         obstacles_top_right + obstacles_top_left) <= 0;
 }
 
+__attribute__((hot))
 static void do_i_iteration(struct square *largest_square,
     const struct board_information *board_info, const int *obstacle_amounts,
     size_t i)
