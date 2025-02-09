@@ -30,6 +30,9 @@ override CFLAGS += -MMD -MP -MF $@.d
 # Enable debugging
 override CFLAGS += -ggdb3
 
+# Add optimizations
+override CFLAGS += -O3 -flto -march=native -fomit-frame-pointer
+
 # LDFLAGS should contain CFLAGS (seperate so command-line can add to it, and
 # to correspond to usual practice)
 override LDFLAGS += $(CFLAGS)
@@ -40,7 +43,7 @@ override LDFLAGS += $(CFLAGS)
 
 BINARY_NAME := bsq
 
-all: $(BINARY_NAME)
+all: $(BINARY_NAME) map_generator
 
 # Program sources files
 SOURCE_FILES := main load_file_in_mem set_largest_possible_square
@@ -54,6 +57,9 @@ obj/src/%.o: src/%.c
 > @mkdir --parents obj/src/
 > $(CC) -c $< -o $@ $(CFLAGS) -D_GNU_SOURCE
 
+map_generator: map_generator_src/main.c
+> $(CC) $< -o $@ -D_GNU_SOURCE
+
 # Include dependencies for the object files
 include $(shell [ -d obj ] && find obj/ -type f -name '*.d')
 
@@ -63,7 +69,7 @@ clean:
 
 # Remove all object, binary and other produced files
 fclean: clean
-> rm --recursive --force $(BINARY_NAME)
+> rm --recursive --force $(BINARY_NAME) map_generator
 
 # "Remakes" the project.
 re:

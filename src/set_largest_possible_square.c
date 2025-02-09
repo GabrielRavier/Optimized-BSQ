@@ -14,15 +14,26 @@ static int *make_obstacle_amounts(const struct board_information *board_info)
     int *result = malloc(sizeof(int) *
         ((board_info->num_cols - 1) * board_info->num_rows));
     for (size_t i = 0; i < board_info->num_rows; ++i)
-        for (size_t j = 0; j < (board_info->num_cols - 1); ++j)
+        for (size_t j = 0; j < (board_info->num_cols - 1); ++j) {
+            int previous_row =
+                (i == 0) ?
+                    0 :
+                result[(i - 1) * (board_info->num_cols - 1) + j];
+
+            int previous_col =
+                (j == 0) ?
+                    0 :
+                result[i * (board_info->num_cols - 1) + (j - 1)];
+
+            int previous_diagonal =
+                (i == 0 || j == 0) ?
+                    0 :
+                result[(i - 1) * (board_info->num_cols - 1) + (j - 1)];
+
             result[i * (board_info->num_cols - 1) + j] =
-                ((i == 0) ? 0 :
-                    result[(i - 1) * (board_info->num_cols - 1) + j]) +
-                ((j == 0) ? 0 :
-                    result[i * (board_info->num_cols - 1) + (j - 1)]) -
-                ((i == 0 || j == 0) ? 0 :
-                    result[(i - 1) * (board_info->num_cols - 1) + (j - 1)]) +
+                (previous_row + previous_col - previous_diagonal) +
                 (board_info->board[i * board_info->num_cols + j] == 'o');
+        }
     return result;
 }
 

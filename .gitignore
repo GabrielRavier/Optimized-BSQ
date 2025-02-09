@@ -1,10 +1,6 @@
-# Ignore files from libmy
-lib/libmy.a
-/include/my/
-/include/my.h
-
 # Ignore files we produce
 /bsq
+/map_generator
 /obj/
 
 # Ignore files produced by the testsuite
