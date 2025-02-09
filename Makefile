@@ -1,21 +1,40 @@
-##
-## EPITECH PROJECT, 2020
-## libmy
-## File description:
-## Makefile for bsq
-##
+# Makefiles are prettier like this
+ifeq ($(origin .RECIPEPREFIX), undefined)
+    $(error This Make does not support .RECIPEPREFIX. \
+        Please use GNU Make 3.82 or later)
+endif
+.RECIPEPREFIX = >
+
+# Use bash as the shell
+SHELL := bash
+
+# ...And use strict flags with it to make sure things fail if a step in there
+# fails
+.SHELLFLAGS := -eu -o pipefail -c
+
+# Delete the target file of a Make rule if it fails - this guards against
+# broken files
+.DELETE_ON_ERROR:
+
+# --warn-undefined-variables: Referencing undefined variables is probably
+# wrong...
+# --no-builtin-rules: I'd rather make my own rules myself, make, thanks :)
+MAKEFLAGS += --warn-undefined-variables --no-builtin-rules
 
 # We use `override` to enable setting part of CFLAGS on the command line
-# This makes the compiler generate dependency files, which will solve any header-related dependency problems we could have had
+
+# This makes the compiler generate dependency files, which will solve any
+# header-related dependency problems we could have had
 override CFLAGS += -MMD -MP -MF $@.d
 
-# We need to be able to include the libmy include files
-override CFLAGS += -Iinclude
+# Enable debugging
+override CFLAGS += -ggdb3
 
-# We need to be able to link to libmy, and link to it
-override LDFLAGS += -Llib $(CFLAGS)
+# LDFLAGS should contain CFLAGS (seperate so command-line can add to it, and
+# to correspond to usual practice)
+override LDFLAGS += $(CFLAGS)
 
-.PHONY: all clean fclean re libmy tests_run
+.PHONY: all clean fclean re tests_run
 
 .PREVIOUS: obj/%.o
 
@@ -23,39 +42,34 @@ BINARY_NAME := bsq
 
 all: $(BINARY_NAME)
 
-# Sources for this project
+# Program sources files
 SOURCE_FILES := main load_file_in_mem set_largest_possible_square
 
-OBJECT_FILES := $(addprefix obj/, $(addsuffix .o, $(SOURCE_FILES)))
+OBJECT_FILES := $(addprefix obj/src/, $(addsuffix .o, $(SOURCE_FILES)))
 
-$(BINARY_NAME): libmy $(OBJECT_FILES)
-	$(CC) $(LDFLAGS) -o $@ $(OBJECT_FILES) -lmy
+$(BINARY_NAME): $(OBJECT_FILES)
+> $(CC) $(LDFLAGS) -o $@ $(OBJECT_FILES)
 
-obj/%.o: src/%.c libmy
-	mkdir --parents obj
-	$(CC) -c $< -o $@ $(CFLAGS)
-
-# Just build the entire libmy when we need these headers
-libmy:
-	$(MAKE) --directory=lib/my
+obj/src/%.o: src/%.c
+> @mkdir --parents obj/src/
+> $(CC) -c $< -o $@ $(CFLAGS) -D_GNU_SOURCE
 
 # Include dependencies for the object files
-include $(wildcard obj/*.d)
+include $(shell [ -d obj ] && find obj/ -type f -name '*.d')
 
 # Remove all object files
 clean:
-	rm --recursive --force obj
-	$(MAKE) --directory=lib/my clean
+> rm --recursive --force obj
 
 # Remove all object, binary and other produced files
 fclean: clean
-	rm --force $(BINARY_NAME)
-	$(MAKE) --directory=lib/my fclean
+> rm --recursive --force $(BINARY_NAME)
 
-# "Remakes" the project. This rule is shit and won't work properly with parallel make, but it's not like I'm using this target, and neither is Marvin using parallel Make (afaik)
-re: clean all
-	$(MAKE) --directory=lib/my re
+# "Remakes" the project.
+re:
+> $(MAKE) clean
+> $(MAKE) all
 
 tests_run: all
-	tar --extract --directory=tests/BSQ --file=tests/BSQ/maps-intermediate.tgz
-	./tests/BSQ/tester.sh
+> tar --extract --directory=tests/BSQ --file=tests/BSQ/maps-intermediate.tgz
+> ./tests/BSQ/run_tests.sh

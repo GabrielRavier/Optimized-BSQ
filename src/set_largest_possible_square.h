@@ -1,10 +1,3 @@
-/*
-** EPITECH PROJECT, 2020
-** BSQ
-** File description:
-** Declares set_largest_possible_square
-*/
-
 #pragma once
 #include <stddef.h>
 

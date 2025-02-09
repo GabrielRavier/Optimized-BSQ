@@ -1,12 +1,5 @@
-/*
-** EPITECH PROJECT, 2020
-** BSQ
-** File description:
-** Implements set_largest_possible_square
-*/
-
 #include "set_largest_possible_square.h"
-#include "my/string.h"
+#include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
@@ -56,7 +49,7 @@ static void set_square(const struct board_information *board_info,
     const struct square *square)
 {
     for (size_t i = 0; i < square->size; ++i)
-        my_memset(&board_info->board[(square->i + i) *
+        memset(&board_info->board[(square->i + i) *
             board_info->num_cols + square->j], 'x', square->size);
 }
 

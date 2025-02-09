@@ -1,11 +1,12 @@
-/*
-** EPITECH PROJECT, 2020
-** BSQ
-** File description:
-** Declares entites from load_file_in_mem.c
-*/
-
 #pragma once
-#include "my/my_string.h"
 
-struct my_string *load_file_in_mem(const char *filename);
+#include <stddef.h>
+#include <stdbool.h>
+
+struct loaded_file {
+    char *data;
+    size_t size;
+};
+
+// Returns the contents of the file at filename in the returned buffer
+bool load_file_in_mem(struct loaded_file *result, const char *filename);
