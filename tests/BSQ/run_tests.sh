@@ -40,6 +40,19 @@ test_no_such_file()
     rm "$temp_file"
 }
 
+test_empty_file()
+{
+    temp_file=`mktemp`
+    input_filename=`mktemp`
+    "$EXE_BSQ" "$input_filename" 2>"$temp_file"
+    if [ $? -ne 84 ]; then
+        echo 'Wrong return value for invalid file'
+    fi
+    diff -u "$temp_file" <(echo "error: Failure to read file '$input_filename'")
+    rm "$temp_file"
+    rm "$input_filename"
+}
+
 test_invalid_file()
 {
     temp_file=`mktemp`
@@ -56,7 +69,7 @@ test_invalid_file()
 
 test_multiple_args &
 test_no_such_file &
-test_invalid_file "" &
+test_empty_file &
 test_invalid_file "1\no" &
 test_invalid_file "1\na\n" &
 test_invalid_file "1\no\no\n" &

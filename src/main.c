@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <sys/mman.h>
 #include <stdbool.h>
 
 static const int ERROR_EXIT_CODE = 84;
@@ -59,12 +60,12 @@ int main(int argc, char *argv[])
     if (!load_file_in_mem(&file_as_buffer, argv[1]))
         return error("Failure to read file '%s'\n", argv[1]);
     if (!verify_file(&file_as_buffer, &board_info)) {
-        free(file_as_buffer.data);
+        munmap(file_as_buffer.data, file_as_buffer.size);
         return error("Invalid board in '%s'\n", argv[1]);
     }
     set_largest_possible_square(&board_info);
     write(STDOUT_FILENO, board_info.board,
         board_info.num_cols * board_info.num_rows);
-    free(file_as_buffer.data);
+    munmap(file_as_buffer.data, file_as_buffer.size);
     return NO_ERROR_EXIT_CODE;
 }

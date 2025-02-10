@@ -1,10 +1,10 @@
 #include "load_file_in_mem.h"
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <assert.h>
-#include <stdlib.h>
 
 bool load_file_in_mem(struct loaded_file *result, const char *filename)
 {
@@ -12,19 +12,17 @@ bool load_file_in_mem(struct loaded_file *result, const char *filename)
     struct stat file_info;
 
     if (fd < 0)
-        return NULL;
+        return false;
     if (fstat(fd, &file_info) < 0) {
         close(fd);
-        return NULL;
+        return false;
     }
-    result->data = malloc(file_info.st_size);
-    result->size = file_info.st_size;
-    assert(result->data != 0);
-    if (read(fd, result->data, file_info.st_size) < file_info.st_size) {
+    result->data = mmap(NULL, file_info.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    if (result->data == MAP_FAILED) {
         close(fd);
-	    free(result->data);
-        return NULL;
+        return false;
     }
+    result->size = file_info.st_size;
     close(fd);
-    return result;
+    return true;
 }

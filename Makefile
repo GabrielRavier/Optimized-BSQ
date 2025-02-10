@@ -33,6 +33,9 @@ override CFLAGS += -ggdb3
 # Add optimizations
 override CFLAGS += -O3 -flto -march=native -fomit-frame-pointer
 
+# Disable optimizations and enable sanitizers
+# override CFLAGS += -O0 -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
+
 # LDFLAGS should contain CFLAGS (seperate so command-line can add to it, and
 # to correspond to usual practice)
 override LDFLAGS += $(CFLAGS)

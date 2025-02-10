@@ -1,7 +1,5 @@
 #include "set_largest_possible_square.h"
-#include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
