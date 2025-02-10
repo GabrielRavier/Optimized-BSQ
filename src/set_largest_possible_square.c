@@ -10,6 +10,9 @@ struct square {
     size_t size;
 };
 
+// make_obstacle_amounts returns a pointer to an array of integers, where each
+// integer represents the amount of obstacles in the rectangle formed by the
+// top left corner of the board and the current square.
 __attribute__((hot))
 static int *make_obstacle_amounts(const struct board_information *board_info)
 {
