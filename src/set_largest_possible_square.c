@@ -70,24 +70,32 @@ static bool check_valid_square(const struct square *square,
         obstacles_top_right + obstacles_top_left) == 0;
 }
 
+// find_largest_square finds the largest square that does not contain any
+// obstacles. The square is represented by the top left corner and its size.
+// The function modifies the passed largest_square to contain the largest
+// square found.
 __attribute__((hot))
-static void do_i_iteration(struct square *largest_square,
-    const struct board_information *board_info, const int *obstacle_amounts,
-    size_t i)
+void find_largest_square(struct square *largest_square,
+    const struct board_information *board_info, const int *obstacle_amounts)
 {
-    for (size_t j = 0; j < (board_info->num_cols - 1); ++j) {
-        if (largest_square->size >= (board_info->num_cols - 1 - j))
+    for (size_t i = 0; i < board_info->num_rows; ++i) {
+        if (largest_square->size >= (board_info->num_rows - i))
             break;
 
-        size_t max_possible_size = (board_info->num_rows - i < board_info->num_cols - 1 - j) ?
-                                    board_info->num_rows - i : board_info->num_cols - 1 - j;
-        struct square current_square = { i, j, largest_square->size + 1 };
-        while (current_square.size <= max_possible_size &&
-            check_valid_square(&current_square, obstacle_amounts, board_info)) {
-            largest_square->i = i;
-            largest_square->j = j;
-            largest_square->size = current_square.size;
-            ++current_square.size;
+        for (size_t j = 0; j < (board_info->num_cols - 1); ++j) {
+            if (largest_square->size >= (board_info->num_cols - 1 - j))
+                break;
+
+            size_t max_possible_size = (board_info->num_rows - i < board_info->num_cols - 1 - j) ?
+                                        board_info->num_rows - i : board_info->num_cols - 1 - j;
+            struct square current_square = { i, j, largest_square->size + 1 };
+            while (current_square.size <= max_possible_size &&
+                check_valid_square(&current_square, obstacle_amounts, board_info)) {
+                largest_square->i = i;
+                largest_square->j = j;
+                largest_square->size = current_square.size;
+                ++current_square.size;
+            }
         }
     }
 }
@@ -104,11 +112,7 @@ void set_largest_possible_square(const struct board_information *board_info)
     struct square largest_square = { 0, 0, 0 };
     int *obstacle_amounts = make_obstacle_amounts(board_info);
 
-    for (size_t i = 0; i < board_info->num_rows; ++i) {
-        if (largest_square.size >= (board_info->num_rows - i))
-            break;
-        do_i_iteration(&largest_square, board_info, obstacle_amounts, i);
-    }
+    find_largest_square(&largest_square, board_info, obstacle_amounts);
     set_square(board_info, &largest_square);
     free(obstacle_amounts);
 }
