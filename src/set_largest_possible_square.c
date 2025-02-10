@@ -86,6 +86,13 @@ static void do_i_iteration(struct square *largest_square,
     }
 }
 
+// The board is represented as a string of characters, with each row separated
+// by a newline character. The board is a rectangle, with each row having the
+// same number of columns. The board is made of two types of characters:
+// - '.' represents an empty space
+// - 'o' represents an obstacle
+// This function modifies the passed board_info by replacing every '.' in the
+// largest possible square (that does not contain obstacles) with 'x'.
 void set_largest_possible_square(const struct board_information *board_info)
 {
     struct square largest_square = { 0, 0, 0 };
