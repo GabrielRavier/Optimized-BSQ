@@ -76,6 +76,9 @@ static void do_i_iteration(struct square *largest_square,
     size_t i)
 {
     for (size_t j = 0; j < (board_info->num_cols - 1); ++j) {
+        if (largest_square->size >= (board_info->num_cols - 1 - j))
+            break;
+
         size_t max_possible_size = (board_info->num_rows - i < board_info->num_cols - 1 - j) ?
                                     board_info->num_rows - i : board_info->num_cols - 1 - j;
         struct square current_square = { i, j, largest_square->size + 1 };
