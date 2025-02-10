@@ -20,14 +20,13 @@ static bool verify_file(struct loaded_file *file_as_buffer,
         return false;
     board_info->board = after_number + 1;
     board_info->num_cols = strcspn(board_info->board, "\n") + 1;
-    for (size_t i = 0; i < board_info->num_rows; ++i)
-        for (size_t j = 0; j < board_info->num_cols; ++j)
-            if (j == (board_info->num_cols - 1)) {
-                if (board_info->board[i * board_info->num_cols + j] != '\n')
-                    return false;
-            } else if (board_info->board[i * board_info->num_cols + j] != 'o' &&
-                board_info->board[i * board_info->num_cols + j] != '.')
-                return false;
+    for (size_t i = 0; i < board_info->num_rows; ++i) {
+        char *row = board_info->board + i * board_info->num_cols;
+        if (strspn(row, ".o") != board_info->num_cols - 1)
+            return false;
+        if (row[board_info->num_cols - 1] != '\n')
+            return false;
+    }
     if (board_info->num_rows * board_info->num_cols != (file_as_buffer->size - (board_info->board - file_as_buffer->data)))
         return false;
     return true;
