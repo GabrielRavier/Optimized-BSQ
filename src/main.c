@@ -19,7 +19,12 @@ static bool verify_file(struct loaded_file *file_as_buffer,
     if (*after_number != '\n' || after_number == file_as_buffer->data)
         return false;
     board_info->board = after_number + 1;
-    board_info->num_cols = strcspn(board_info->board, "\n") + 1;
+
+    char *memchr_result = memchr(board_info->board, '\n', file_as_buffer->size - (board_info->board - file_as_buffer->data));
+    if (memchr_result == NULL)
+        return false;
+    board_info->num_cols = memchr_result - board_info->board + 1;
+
     for (size_t i = 0; i < board_info->num_rows; ++i) {
         char *row = board_info->board + i * board_info->num_cols;
         if (strspn(row, ".o") != board_info->num_cols - 1)

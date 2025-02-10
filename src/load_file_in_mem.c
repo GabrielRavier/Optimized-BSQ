@@ -22,7 +22,7 @@ bool load_file_in_mem(struct loaded_file *result, const char *filename)
     assert(result->data != 0);
     if (read(fd, result->data, file_info.st_size) < file_info.st_size) {
         close(fd);
-	free(result->data);
+	    free(result->data);
         return NULL;
     }
     close(fd);
