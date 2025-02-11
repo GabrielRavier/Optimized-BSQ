@@ -61,7 +61,7 @@ obj/src/%.o: src/%.c
 > $(CC) -c $< -o $@ $(CFLAGS) -D_GNU_SOURCE
 
 map_generator: map_generator_src/main.c
-> $(CC) $< -o $@ -D_GNU_SOURCE
+> $(CC) $< -o $@ -D_GNU_SOURCE -O3 -flto
 
 # Include dependencies for the object files
 include $(shell [ -d obj ] && find obj/ -type f -name '*.d')
