@@ -27,15 +27,17 @@ static bool verify_file(struct loaded_file *file_as_buffer,
         return false;
     board_info->num_cols = memchr_result - board_info->board + 1;
 
+    size_t expected_size = board_info->num_rows * board_info->num_cols;
+    if (expected_size != (file_as_buffer->size - (board_info->board - file_as_buffer->data)))
+        return false;
+
     for (size_t i = 0; i < board_info->num_rows; ++i) {
         char *row = board_info->board + i * board_info->num_cols;
-        if (strspn(row, ".o") != board_info->num_cols - 1)
-            return false;
         if (row[board_info->num_cols - 1] != '\n')
             return false;
+        if (strspn(row, ".o") != board_info->num_cols - 1)
+            return false;
     }
-    if (board_info->num_rows * board_info->num_cols != (file_as_buffer->size - (board_info->board - file_as_buffer->data)))
-        return false;
     return true;
 }
 
