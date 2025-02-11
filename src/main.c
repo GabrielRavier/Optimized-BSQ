@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
             argc);
     if (!load_file_in_mem(&file_as_buffer, argv[1]))
         return error("Failure to read file '%s'\n", argv[1]);
+    madvise(file_as_buffer.data, file_as_buffer.size, MADV_WILLNEED);
     if (!verify_file(&file_as_buffer, &board_info)) {
         munmap(file_as_buffer.data, file_as_buffer.size);
         return error("Invalid board in '%s'\n", argv[1]);

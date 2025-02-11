@@ -15,6 +15,33 @@ do
     diff -u <("$EXE_BSQ" "$i") "$solved_filename" &
 done
 
+process_single_my_map()
+{
+    # A bit of a cludge but it works, so... ¯\_(ツ)_/¯
+    solved_filename=my_maps_solved/$(basename $1)
+
+    # Make temporary files for both
+    temp_file_input=`mktemp`
+    temp_file_output=`mktemp`
+
+    # Uncompress the files
+    xz -d -c "$1" >"$temp_file_input"
+    xz -d -c "$solved_filename" >"$temp_file_output"
+
+    diff -u <("$EXE_BSQ" "$temp_file_input") "$temp_file_output"
+
+    # Clean up
+    rm "$temp_file_input"
+    rm "$temp_file_output"
+}
+
+for i in my_maps/*.xz
+do
+    # Use & to parallelize the tests
+    process_single_my_map "$i" &
+done
+
+
 # Test command line stuff
 test_multiple_args()
 {

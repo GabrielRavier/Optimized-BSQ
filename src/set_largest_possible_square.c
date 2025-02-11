@@ -20,6 +20,7 @@ struct solver {
     struct square best;
 };
 
+__attribute__((hot))
 static int min3(uint32_t x, uint32_t y, uint32_t z)
 {
     if (x > y)
@@ -27,6 +28,7 @@ static int min3(uint32_t x, uint32_t y, uint32_t z)
     return (x < z) ? x : z;
 }
 
+__attribute__((hot))
 static void check_square(const char processed_square, uint32_t *restrict square_size_values, uint32_t *restrict prev_row_square_size_values, struct solver *solver)
 {
     register uint32_t square_size;
@@ -50,6 +52,7 @@ static void check_square(const char processed_square, uint32_t *restrict square_
         solver->best = (struct square) { square_size, solver->x, solver->y };
 }
 
+__attribute__((hot))
 static void find_largest_possible_square(const struct board_information *board_info, struct solver *solver)
 {
     uint32_t square_size_values[2][board_info->num_cols - 1]; // vla moment (maybe revise this later lol)
