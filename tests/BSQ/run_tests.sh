@@ -25,8 +25,8 @@ process_single_my_map()
     temp_file_output=`mktemp`
 
     # Uncompress the files
-    xz -d -c "$1" >"$temp_file_input"
-    xz -d -c "$solved_filename" >"$temp_file_output"
+    bzip2 -d -c "$1" >"$temp_file_input"
+    bzip2 -d -c "$solved_filename" >"$temp_file_output"
 
     diff -u <("$EXE_BSQ" "$temp_file_input") "$temp_file_output"
 
@@ -35,7 +35,7 @@ process_single_my_map()
     rm "$temp_file_output"
 }
 
-for i in my_maps/*.xz
+for i in my_maps/*.bz2
 do
     # Use & to parallelize the tests
     process_single_my_map "$i" &
