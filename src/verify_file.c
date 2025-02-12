@@ -11,15 +11,6 @@
 __attribute__((hot))
 static bool check_only_two_chars_in_range(char *start, size_t size, char c1, char c2)
 {
-    // Align the start to 16 bytes
-    char *start_aligned = (char *)(((uintptr_t)start + 15) & ~15);
-    if (start_aligned - start > size)
-        start_aligned = start + size;
-    size -= start_aligned - start;
-    for (; start < start_aligned; ++start)
-        if (*start != c1 && *start != c2)
-            return false;
-
 #if defined(__SSE4_2__)
     __m128i mask = _mm_set_epi8(
         0, 0, 0, 0, 0, 0, 0,  0,
@@ -30,18 +21,15 @@ static bool check_only_two_chars_in_range(char *start, size_t size, char c1, cha
     __m128i *end_m128i = (__m128i *)(start + size - 16);
 
     for (; start_m128i < end_m128i; ++start_m128i) {
-        __m128i data = _mm_load_si128(start_m128i);
+        __m128i data = _mm_loadu_si128(start_m128i);
         uint32_t result = _mm_cmpistri(mask, data, _SIDD_NEGATIVE_POLARITY | _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_LEAST_SIGNIFICANT);
         bool carry = _mm_cmpistrc(mask, data, _SIDD_NEGATIVE_POLARITY | _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_LEAST_SIGNIFICANT);
         if (carry)
             return false;
     }
 
-    char *start_unaligned = (char *)start_m128i;
-    for (; start_unaligned < start + size; ++start_unaligned)
-        if (*start_unaligned != c1 && *start_unaligned != c2)
-            return false;
-    return true;
+    size -= (char *)start_m128i - start;
+    start = (char *)start_m128i;
 #elif defined(__SSE2__)
     __m128i c1_mask = _mm_set1_epi8(c1);
     __m128i c2_mask = _mm_set1_epi8(c2);
@@ -49,7 +37,7 @@ static bool check_only_two_chars_in_range(char *start, size_t size, char c1, cha
     __m128i *end_m128i = (__m128i *)(start + size - 16);
 
     for (; start_m128i < end_m128i; ++start_m128i) {
-        __m128i data = _mm_load_si128(start_m128i);
+        __m128i data = _mm_loadu_si128(start_m128i);
         __m128i c1_result = _mm_cmpeq_epi8(data, c1_mask);
         __m128i c2_result = _mm_cmpeq_epi8(data, c2_mask);
         __m128i or_result = _mm_or_si128(c1_result, c2_result);
@@ -57,18 +45,15 @@ static bool check_only_two_chars_in_range(char *start, size_t size, char c1, cha
             return false;
     }
 
-    char *start_unaligned = (char *)start_m128i;
-    for (; start_unaligned < start + size; ++start_unaligned)
-        if (*start_unaligned != c1 && *start_unaligned != c2)
-            return false;
-    return true;
+    size -= (char *)start_m128i - start;
+    start = (char *)start_m128i;
 #else
 #define CHECK_ONLY_TWO_CHARS_IN_RANGE_SLOWER_THAN_STRSPN
+#endif
     for (size_t i = 0; i < size; ++i)
         if (start[i] != c1 && start[i] != c2)
             return false;
     return true;
-#endif
 }
 
 __attribute__((hot))
@@ -94,7 +79,7 @@ bool verify_file(struct loaded_file *file_as_buffer,
         char *row = board_info->board + i * board_info->num_cols;
         if (row[board_info->num_cols - 1] != '\n')
             return false;
-#if !defined(CHECK_ONLY_TWO_CHARS_IN_RANGE_SLOWER_THAN_STRSPN) // After a while I've been able to optimize this to make it faster than strspn
+#if 0 //!defined(CHECK_ONLY_TWO_CHARS_IN_RANGE_SLOWER_THAN_STRSPN) // I'ev tried pretty hard but it looks like glibc's strspn is just too good
         if (!check_only_two_chars_in_range(row, board_info->num_cols - 1, 'o', '.'))
             return false;
 #else
