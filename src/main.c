@@ -1,45 +1,17 @@
 #include "set_largest_possible_square.h"
 #include "load_file_in_mem.h"
+#include "verify_file.h"
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sched.h>
+
+#include <stdarg.h>
+#include <stdint.h>
 #include <stdbool.h>
 
 static const int ERROR_EXIT_CODE = 84;
 static const int NO_ERROR_EXIT_CODE = 0;
-
-__attribute__((hot))
-static bool verify_file(struct loaded_file *file_as_buffer,
-    struct board_information *board_info)
-{
-    char *after_number;
-    board_info->num_rows = strtol(file_as_buffer->data, &after_number, 0);
-    if (*after_number != '\n' || after_number == file_as_buffer->data)
-        return false;
-    board_info->board = after_number + 1;
-
-    char *memchr_result = memchr(board_info->board, '\n', file_as_buffer->size - (board_info->board - file_as_buffer->data));
-    if (memchr_result == NULL)
-        return false;
-    board_info->num_cols = memchr_result - board_info->board + 1;
-
-    size_t expected_size = board_info->num_rows * board_info->num_cols;
-    if (expected_size != (file_as_buffer->size - (board_info->board - file_as_buffer->data)))
-        return false;
-
-    for (size_t i = 0; i < board_info->num_rows; ++i) {
-        char *row = board_info->board + i * board_info->num_cols;
-        if (row[board_info->num_cols - 1] != '\n')
-            return false;
-        if (strspn(row, ".o") != board_info->num_cols - 1)
-            return false;
-    }
-    return true;
-}
 
 __attribute__((format(printf, 1, 2))) static int error(const char *format, ...)
 {

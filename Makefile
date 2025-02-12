@@ -49,7 +49,7 @@ BINARY_NAME := bsq
 all: $(BINARY_NAME) map_generator
 
 # Program sources files
-SOURCE_FILES := main load_file_in_mem set_largest_possible_square
+SOURCE_FILES := main load_file_in_mem set_largest_possible_square verify_file
 
 OBJECT_FILES := $(addprefix obj/src/, $(addsuffix .o, $(SOURCE_FILES)))
 
