@@ -54,6 +54,6 @@ int main(int argc, char *argv[])
     set_largest_possible_square(&board_info);
     write(STDOUT_FILENO, board_info.board,
         board_info.num_cols * board_info.num_rows);
-    munmap(file_as_buffer.data, file_as_buffer.size);
+    //munmap(file_as_buffer.data, file_as_buffer.size); // Cleaning up is slower than just letting the kernel do it
     return NO_ERROR_EXIT_CODE;
 }
