@@ -34,3 +34,5 @@ do
 done
 
 wait
+
+printf 'If no other output was produced, all tests for 10000x10000 maps passed\n'

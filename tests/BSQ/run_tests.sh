@@ -19,7 +19,7 @@ do_mouli_maps()
         solved_filename=mouli_maps_solved/$(basename $i)
 
         # Use & to parallelize the tests
-        diff -u <("$EXE_BSQ" "$i") "$solved_filename" &
+        ( ( diff -u <("$EXE_BSQ" "$i") "$solved_filename" | head -n30 ) || printf 'Failed for %s (note: above are the first 30 lines of the diff with the expected output)\n' "$i" ) &
     done
 
     wait
@@ -90,3 +90,5 @@ test_invalid_file "1\no\no\n" &
 
 # Don't exit until all the child processes have done so
 wait
+
+printf 'If no other output (except the message saying the 10000x10000 tests passed) was produced, all tests passed\n'
