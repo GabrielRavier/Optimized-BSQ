@@ -9,6 +9,8 @@ EXE_BSQ=$(realpath "$EXE_BSQ")
 # Execute tests from the directory that which contains the script
 cd "$(dirname "$0")"
 
+tar --extract --directory=. --file=./maps-intermediate.tgz
+
 for i in mouli_maps/*
 do
     # A bit of a cludge but it works, so... ¯\_(ツ)_/¯

@@ -80,5 +80,4 @@ re:
 > $(MAKE) all
 
 tests_run: all
-> tar --extract --directory=tests/BSQ --file=tests/BSQ/maps-intermediate.tgz
 > ./tests/BSQ/run_tests.sh
