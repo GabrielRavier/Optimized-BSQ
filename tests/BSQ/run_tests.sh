@@ -9,16 +9,23 @@ EXE_BSQ=$(realpath "$EXE_BSQ")
 # Execute tests from the directory that which contains the script
 cd "$(dirname "$0")"
 
-tar --extract --directory=. --file=./maps-intermediate.tgz
+do_mouli_maps()
+{
+    tar --extract --directory=. --file=./maps-intermediate.tgz
 
-for i in mouli_maps/*
-do
-    # A bit of a cludge but it works, so... ¯\_(ツ)_/¯
-    solved_filename=mouli_maps_solved/$(basename $i)
+    for i in mouli_maps/*
+    do
+        # A bit of a cludge but it works, so... ¯\_(ツ)_/¯
+        solved_filename=mouli_maps_solved/$(basename $i)
 
-    # Use & to parallelize the tests
-    diff -u <("$EXE_BSQ" "$i") "$solved_filename" &
-done
+        # Use & to parallelize the tests
+        diff -u <("$EXE_BSQ" "$i") "$solved_filename" &
+    done
+
+    wait
+}
+
+do_mouli_maps &
 
 ./run_tests_10000x10000_maps.sh "$EXE_BSQ" &
 
