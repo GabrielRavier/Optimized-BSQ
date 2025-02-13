@@ -20,7 +20,7 @@ process_single_my_map()
     bzip2 -d -c "$1" >"$temp_file_input"
     bzip2 -d -c "$solved_filename" >"$temp_file_output"
 
-    ( diff -u <("$EXE_BSQ" "$temp_file_input") "$temp_file_output" | head -n30 ) || printf 'Failed for %s (note: only the first 30 lines of the diff with the expected output are shown)\n' "$1"
+    ( diff -u <("$EXE_BSQ" "$temp_file_input") "$temp_file_output" | head -n30 ) || printf 'Failed for %s (note: above are the first 30 lines of the diff with the expected output)\n' "$1"
 
     # Clean up
     rm "$temp_file_input"
