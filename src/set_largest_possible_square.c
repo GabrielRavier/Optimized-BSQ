@@ -50,13 +50,6 @@ static void check_square(const char processed_square, uint32_t *restrict square_
     square_size_values[solver->x] = square_size;
 }
 
-__attribute__((hot))
-static __m128i do_sse_max_epu32(__m128i a, __m128i b)
-{
-    __m128i cmp = _mm_cmpgt_epi32(a, b);
-    return _mm_or_si128(_mm_and_si128(cmp, a), _mm_andnot_si128(cmp, b));
-}
-
 // If there is a value in the array that is larger than the current maximum, the maximum value is updated to that value
 // Note that the position shall always be that of the earliest maximum value in the array - that is, if there are multiple samples of the maximum value, the index of the first one must be returned
 __attribute__((hot))
@@ -79,25 +72,16 @@ static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint3
         // First load the values
         __m128i values = _mm_loadu_si128(arr128);
 
-        // Find the maximum value
-        __m128i max_values = do_sse_max_epu32(values, _mm_srli_si128(values, 8));
-        max_values = do_sse_max_epu32(max_values, _mm_srli_si128(max_values, 4));
+        // Check if any of the values are larger than the current maximum
+        __m128i cmp = _mm_cmpgt_epi32(values, _mm_set1_epi32(*max));
 
-        // Check if the maximum value is greater than the current maximum
-        __m128i cmp = _mm_cmpgt_epi32(max_values, _mm_set1_epi32(*max));
-
-        // If the maximum value is greater, update the maximum value and its position
-        if (_mm_movemask_epi8(cmp)) {
-            // Find the position of the maximum value
-            uint32_t max_value = _mm_extract_epi32(max_values, 0);
-            for (size_t i = 0; i < 4; ++i) {
-                if (((uint32_t *)&values)[i] == max_value) {
-                    *max = max_value;
+        if (_mm_movemask_epi8(cmp))
+            // Find the largest value in those and update the maximum and position
+            for (size_t i = 0; i < 4; ++i)
+                if (((uint32_t *)&values)[i] > *max) {
+                    *max = ((uint32_t *)&values)[i];
                     *pos = (uint32_t *)arr128 - arr + i;
-                    break;
                 }
-            }
-        }
     }
 
     for (size_t i = (uint32_t *)arr128 - arr; i < size; ++i) {
