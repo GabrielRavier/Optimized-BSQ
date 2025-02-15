@@ -1,6 +1,7 @@
 #include "set_largest_possible_square.h"
 #include <string.h>
 #include <assert.h>
+#include <x86intrin.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -47,9 +48,65 @@ static void check_square(const char processed_square, uint32_t *restrict square_
         );
 
     square_size_values[solver->x] = square_size;
+}
 
-    if (solver->best.size < square_size)
-        solver->best = (struct square) { square_size, solver->x, solver->y };
+__attribute__((hot))
+static __m128i do_sse_max_epu32(__m128i a, __m128i b)
+{
+    __m128i cmp = _mm_cmpgt_epi32(a, b);
+    return _mm_or_si128(_mm_and_si128(cmp, a), _mm_andnot_si128(cmp, b));
+}
+
+// If there is a value in the array that is larger than the current maximum, the maximum value is updated to that value
+// Note that the position shall always be that of the earliest maximum value in the array - that is, if there are multiple samples of the maximum value, the index of the first one must be returned
+__attribute__((hot))
+static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint32_t *max, uint32_t *pos)
+{
+    if (size == 0)
+        return;
+#if !defined(__SSE2__)
+    for (size_t i = 0; i < size; ++i) {
+        if (arr[i] > *max) {
+            *max = arr[i];
+            *pos = i;
+        }
+    }
+#else
+    __m128i *arr128 = (__m128i *)arr;
+    __m128i *arr128_end = (__m128i *)(arr + size - 4);
+
+    for (; arr128 < arr128_end; ++arr128) {
+        // First load the values
+        __m128i values = _mm_loadu_si128(arr128);
+
+        // Find the maximum value
+        __m128i max_values = do_sse_max_epu32(values, _mm_srli_si128(values, 8));
+        max_values = do_sse_max_epu32(max_values, _mm_srli_si128(max_values, 4));
+
+        // Check if the maximum value is greater than the current maximum
+        __m128i cmp = _mm_cmpgt_epi32(max_values, _mm_set1_epi32(*max));
+
+        // If the maximum value is greater, update the maximum value and its position
+        if (_mm_movemask_epi8(cmp)) {
+            // Find the position of the maximum value
+            uint32_t max_value = _mm_extract_epi32(max_values, 0);
+            for (size_t i = 0; i < 4; ++i) {
+                if (((uint32_t *)&values)[i] == max_value) {
+                    *max = max_value;
+                    *pos = (uint32_t *)arr128 - arr + i;
+                    break;
+                }
+            }
+        }
+    }
+
+    for (size_t i = (uint32_t *)arr128 - arr; i < size; ++i) {
+        if (arr[i] > *max) {
+            *max = arr[i];
+            *pos = i;
+        }
+    }
+#endif
 }
 
 __attribute__((hot))
@@ -57,6 +114,16 @@ static void check_line(const struct board_information *board_info, uint32_t squa
 {
     for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
         check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver);
+
+    uint32_t largest_square_size = solver->best.size;
+    uint32_t largest_square_x;
+    find_u32_arr_larger_with_pos(square_size_values[solver->y & 1], board_info->num_cols - 1, &largest_square_size, &largest_square_x);
+
+    if (largest_square_size > solver->best.size) {
+        solver->best.size = largest_square_size;
+        solver->best.x = largest_square_x;
+        solver->best.y = solver->y;
+    }
 }
 
 __attribute__((hot))
