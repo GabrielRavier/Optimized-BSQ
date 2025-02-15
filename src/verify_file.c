@@ -79,7 +79,7 @@ bool verify_file(struct loaded_file *file_as_buffer,
         char *row = board_info->board + i * board_info->num_cols;
         if (row[board_info->num_cols - 1] != '\n')
             return false;
-#if 0 //!defined(CHECK_ONLY_TWO_CHARS_IN_RANGE_SLOWER_THAN_STRSPN) // I'ev tried pretty hard but it looks like glibc's strspn is just too good
+#if 0 //!defined(CHECK_ONLY_TWO_CHARS_IN_RANGE_SLOWER_THAN_STRSPN) // I've tried pretty hard but it looks like glibc's strspn is just too good
         if (!check_only_two_chars_in_range(row, board_info->num_cols - 1, 'o', '.'))
             return false;
 #else
