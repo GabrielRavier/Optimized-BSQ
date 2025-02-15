@@ -53,14 +53,20 @@ static void check_square(const char processed_square, uint32_t *restrict square_
 }
 
 __attribute__((hot))
+static void check_line(const struct board_information *board_info, uint32_t square_size_values[2][board_info->num_cols - 1], struct solver *solver)
+{
+    for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
+        check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver);
+}
+
+__attribute__((hot))
 static void find_largest_possible_square(const struct board_information *board_info, struct solver *solver)
 {
     uint32_t square_size_values[2][board_info->num_cols - 1]; // vla moment (maybe revise this later lol)
     memset(square_size_values, 0, sizeof(square_size_values));
 
     for (solver->y = 0; solver->y < board_info->num_rows; ++solver->y)
-        for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
-            check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver);
+        check_line(board_info, square_size_values, solver);
 }
 
 static void fill_square(const struct board_information *board_info, struct solver solver)
