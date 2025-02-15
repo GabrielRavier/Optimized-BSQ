@@ -68,20 +68,27 @@ static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint3
     __m128i *arr128 = (__m128i *)arr;
     __m128i *arr128_end = (__m128i *)(arr + size - 4);
 
+    // We cache the value of _mm_set1_epi32(*max) to avoid having to reload it on every loop iteration (we only need to reload it when *max is updated)
+    __m128i max_splatted = _mm_set1_epi32(*max);
+
     for (; arr128 < arr128_end; ++arr128) {
         // First load the values
         __m128i values = _mm_loadu_si128(arr128);
 
         // Check if any of the values are larger than the current maximum
-        __m128i cmp = _mm_cmpgt_epi32(values, _mm_set1_epi32(*max));
+        __m128i cmp = _mm_cmpgt_epi32(values, max_splatted);
 
-        if (_mm_movemask_epi8(cmp))
+        if (_mm_movemask_epi8(cmp)) {
             // Find the largest value in those and update the maximum and position
             for (size_t i = 0; i < 4; ++i)
                 if (((uint32_t *)&values)[i] > *max) {
                     *max = ((uint32_t *)&values)[i];
                     *pos = (uint32_t *)arr128 - arr + i;
                 }
+
+            // *max has been updated, so max_splatted is now. Update it too.
+            max_splatted = _mm_set1_epi32(*max);
+        }
     }
 
     for (size_t i = (uint32_t *)arr128 - arr; i < size; ++i) {
