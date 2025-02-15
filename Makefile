@@ -31,7 +31,7 @@ override CFLAGS += -MMD -MP -MF $@.d
 override CFLAGS += -ggdb3
 
 # Add optimizations
-override CFLAGS += -O3 -flto=auto -march=native -fomit-frame-pointer -frename-registers -ftree-loop-linear -funroll-loops
+override CFLAGS += -O3 -flto=auto -march=native -fomit-frame-pointer -frename-registers -ftree-loop-linear -funroll-loops -fno-plt
 
 # Disable optimizations and enable sanitizers
 # override CFLAGS += -O0 -fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer
