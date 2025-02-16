@@ -64,7 +64,7 @@ static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint3
             *pos = i;
         }
     }
-#else
+#elif !defined(__AVX2__)
     __m128i *arr128 = (__m128i *)arr;
     __m128i *arr128_end = (__m128i *)(arr + size - 4);
 
@@ -92,6 +92,39 @@ static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint3
     }
 
     for (size_t i = (uint32_t *)arr128 - arr; i < size; ++i) {
+        if (arr[i] > *max) {
+            *max = arr[i];
+            *pos = i;
+        }
+    }
+#else
+    __m256i *arr256 = (__m256i *)arr;
+    __m256i *arr256_end = (__m256i *)(arr + size - 8);
+
+    // We cache the value of _mm256_set1_epi32(*max) to avoid having to reload it on every loop iteration (we only need to reload it when *max is updated)
+    __m256i max_splatted = _mm256_set1_epi32(*max);
+
+    for (; arr256 < arr256_end; ++arr256) {
+        // First load the values
+        __m256i values = _mm256_loadu_si256(arr256);
+
+        // Check if any of the values are larger than the current maximum
+        __m256i cmp = _mm256_cmpgt_epi32(values, max_splatted);
+
+        if (_mm256_movemask_epi8(cmp)) {
+            // Find the largest value in those and update the maximum and position
+            for (size_t i = 0; i < 8; ++i)
+                if (((uint32_t *)&values)[i] > *max) {
+                    *max = ((uint32_t *)&values)[i];
+                    *pos = (uint32_t *)arr256 - arr + i;
+                }
+
+            // *max has been updated, so max_splatted is now. Update it too.
+            max_splatted = _mm256_set1_epi32(*max);
+        }
+    }
+
+    for (size_t i = (uint32_t *)arr256 - arr; i < size; ++i) {
         if (arr[i] > *max) {
             *max = arr[i];
             *pos = i;
