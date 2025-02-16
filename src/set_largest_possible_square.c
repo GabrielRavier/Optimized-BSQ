@@ -79,7 +79,7 @@ static void check_square_one_ahead(const char processed_square, const char prev_
         square_size += min3(
             prev_row_square_size_values[solver->x - 1],
             prev_row_square_size_values[solver->x],
-            square_size_values[solver->x - 1]
+            prev_square_value
         );
 
     square_size_values[solver->x] = square_size;
