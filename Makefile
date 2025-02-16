@@ -21,6 +21,9 @@ SHELL := bash
 # --no-builtin-rules: I'd rather make my own rules myself, make, thanks :)
 MAKEFLAGS += --warn-undefined-variables --no-builtin-rules
 
+# Use GCC for all its extra flags
+CC := gcc
+
 # We use `override` to enable setting part of CFLAGS on the command line
 
 # This makes the compiler generate dependency files, which will solve any
