@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-# Invoked as `./run_tests.sh /path/to/bsq`
+# Invoked as `./run_tests_10000x10000_maps.sh /path/to/bsq`
 EXE_BSQ=$(realpath "$1")
 
 # Execute tests from the directory that which contains the script
