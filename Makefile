@@ -30,9 +30,6 @@ override CFLAGS += -MMD -MP -MF $@.d
 # Enable debugging
 override CFLAGS += -ggdb3
 
-# Enable C23
-override CFLAGS += -std=c23
-
 # Add optimizations
 override CFLAGS += -O3 -flto=auto -march=native -fomit-frame-pointer -frename-registers -ftree-loop-linear -funroll-loops -fno-plt
 
