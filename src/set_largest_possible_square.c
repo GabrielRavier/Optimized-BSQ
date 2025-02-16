@@ -29,60 +29,25 @@ static int min3(uint32_t x, uint32_t y, uint32_t z)
     return (x < z) ? x : z;
 }
 
+// Returns the resulting square - so that it can be passed back as the previous square size value for the next square
 __attribute__((hot))
-static void check_square(const char processed_square, uint32_t *restrict square_size_values, uint32_t *restrict prev_row_square_size_values, struct solver *solver)
+static uint32_t check_square(const char processed_square, uint32_t *restrict square_size_values, uint32_t *restrict prev_row_square_size_values, struct solver *solver, uint32_t prev_square_size_value)
 {
     register uint32_t square_size;
 
     if (processed_square == 'o') {
         square_size_values[solver->x] = 0;
-        return;
+        return 0;
     }
 
-    square_size = 1;
-    if (solver->x != 0 && solver->y != 0)
-        square_size += min3(
-            prev_row_square_size_values[solver->x - 1],
-            prev_row_square_size_values[solver->x],
-            square_size_values[solver->x - 1]
-        );
+    square_size = 1 + min3(
+        prev_row_square_size_values[(size_t)solver->x - 1],
+        prev_row_square_size_values[solver->x],
+        prev_square_size_value
+    );
 
     square_size_values[solver->x] = square_size;
-}
-
-// check_square but it doesn't depend on the previous square's square size having been stored in square_size_values
-// Note that this only works with solver->x >= 2
-// This improves performance - I believe the reason is because it allows the CPU to proceed to the next iteration of the loop without having to wait for the previous square's square size to be stored
-__attribute__((hot))
-static void check_square_one_ahead(const char processed_square, const char prev_square, uint32_t *restrict square_size_values, uint32_t *restrict prev_row_square_size_values, struct solver *solver)
-{
-    register uint32_t square_size;
-
-    if (processed_square == 'o') {
-        square_size_values[solver->x] = 0;
-        return;
-    }
-
-    uint32_t prev_square_value = 0;
-    if (prev_square != 'o') {
-        prev_square_value = 1;
-        if (solver->y != 0)
-            prev_square_value += min3(
-                prev_row_square_size_values[solver->x - 2],
-                prev_row_square_size_values[solver->x - 1],
-                square_size_values[solver->x - 2]
-            );
-    }
-
-    square_size = 1;
-    if (solver->y != 0)
-        square_size += min3(
-            prev_row_square_size_values[solver->x - 1],
-            prev_row_square_size_values[solver->x],
-            prev_square_value
-        );
-
-    square_size_values[solver->x] = square_size;
+    return square_size;
 }
 
 // If there is a value in the array that is larger than the current maximum, the maximum value is updated to that value
@@ -169,16 +134,15 @@ static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint3
 }
 
 __attribute__((hot))
-static void check_line(const struct board_information *board_info, uint32_t square_size_values[2][board_info->num_cols - 1], struct solver *solver)
+static void check_line(const struct board_information *board_info, uint32_t square_size_values[2][board_info->num_cols], struct solver *solver)
 {
-    for (solver->x = 0; solver->x < board_info->num_cols - 1 && solver->x < 2; ++solver->x)
-        check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver);
-    for (; solver->x < board_info->num_cols - 1; ++solver->x)
-        check_square_one_ahead(board_info->board[solver->y * board_info->num_cols + solver->x], board_info->board[solver->y * board_info->num_cols + solver->x - 1], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver);
+    uint32_t latest_square_size_value = 0;
+    for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
+        latest_square_size_value = check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1] + 1, square_size_values[(solver->y + 1) & 1] + 1, solver, latest_square_size_value);
 
     uint32_t largest_square_size = solver->best.size;
     uint32_t largest_square_x;
-    find_u32_arr_larger_with_pos(square_size_values[solver->y & 1], board_info->num_cols - 1, &largest_square_size, &largest_square_x);
+    find_u32_arr_larger_with_pos(square_size_values[solver->y & 1] + 1, board_info->num_cols - 1, &largest_square_size, &largest_square_x);
 
     if (largest_square_size > solver->best.size) {
         solver->best.size = largest_square_size;
@@ -190,7 +154,7 @@ static void check_line(const struct board_information *board_info, uint32_t squa
 __attribute__((hot))
 static void find_largest_possible_square(const struct board_information *board_info, struct solver *solver)
 {
-    uint32_t square_size_values[2][board_info->num_cols - 1]; // vla moment (maybe revise this later lol)
+    uint32_t square_size_values[2][board_info->num_cols]; // vla moment (maybe revise this later lol). Note that we add an extra element than necessary, so that we can avoid having to check for the beginning of the array in the loop
     memset(square_size_values, 0, sizeof(square_size_values));
 
     for (solver->y = 0; solver->y < board_info->num_rows; ++solver->y)
