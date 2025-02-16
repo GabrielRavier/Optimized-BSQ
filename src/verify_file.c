@@ -8,6 +8,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#define CHECK_ONLY_TWO_CHARS_IN_RANGE_SLOWER_THAN_STRSPN // I've tried pretty hard but it looks like glibc's strspn is just too good
+
 __attribute__((hot))
 static bool check_only_two_chars_in_range(char *start, size_t size, char c1, char c2)
 {
@@ -79,7 +81,7 @@ bool verify_file(struct loaded_file *file_as_buffer,
         char *row = board_info->board + i * board_info->num_cols;
         if (row[board_info->num_cols - 1] != '\n')
             return false;
-#if 0 //!defined(CHECK_ONLY_TWO_CHARS_IN_RANGE_SLOWER_THAN_STRSPN) // I've tried pretty hard but it looks like glibc's strspn is just too good
+#if !defined(CHECK_ONLY_TWO_CHARS_IN_RANGE_SLOWER_THAN_STRSPN)
         if (!check_only_two_chars_in_range(row, board_info->num_cols - 1, 'o', '.'))
             return false;
 #else
