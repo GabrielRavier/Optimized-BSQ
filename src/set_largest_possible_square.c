@@ -173,7 +173,7 @@ static void set_each_val_to_min_of_itself_and_previous_val(uint32_t *arr, size_t
         _mm_storeu_si128((__m128i *)arr_iter_backwards, min_vals);
     }
 
-    for (size_t i = arr_iter_backwards - arr; i > 0; --i)
+    for (size_t i = arr_iter_backwards - arr - 1; i > 0; --i)
         arr[i] = min(arr[i], arr[i - 1]);
     arr[0] = min(arr[0], 0);
 
@@ -189,7 +189,7 @@ static void set_each_val_to_min_of_itself_and_previous_val(uint32_t *arr, size_t
         _mm256_storeu_si256((__m256i *)arr_iter_backwards, min_vals);
     }
 
-    for (size_t i = arr_iter_backwards - arr; i > 0; --i)
+    for (size_t i = arr_iter_backwards - arr - 1; i > 0; --i)
         arr[i] = min(arr[i], arr[i - 1]);
     arr[0] = min(arr[0], 0);
 
