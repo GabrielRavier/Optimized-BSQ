@@ -274,26 +274,43 @@ static inline void check_line(const struct board_information *board_info, uint32
         set_each_val_to_min_of_itself_and_previous_val(square_size_values[(solver->y + 1) & 1], board_info->num_cols); // See check_square min() call as for why we do this
 
 
-    bool use_branchless = true;
+    enum {
+        CHECK_SQUARE_BRANCHLESS,
+        CHECK_SQUARE_LOW_O_COUNT,
+        CHECK_SQUARE_HIGH_O_COUNT,
+    } which_check_square = CHECK_SQUARE_BRANCHLESS;
 #if defined(__SSE2__)
     if (board_info->num_cols > 500) {
         size_t o_count = count_val_in_mem(board_info->board + solver->y * board_info->num_cols, 'o', board_info->num_cols / 8) * 8;
-        if (o_count > board_info->num_cols / 2)
-            o_count = board_info->num_cols - o_count;
         if (o_count < board_info->num_cols / 10)
-            use_branchless = false;
+            which_check_square = CHECK_SQUARE_LOW_O_COUNT;
+        else if (o_count > (board_info->num_cols - (board_info->num_cols / 10)))
+            which_check_square = CHECK_SQUARE_HIGH_O_COUNT;
     }
 #endif
 
     uint32_t latest_square_size_value = 0;
-    if (use_branchless)
+    if (which_check_square == CHECK_SQUARE_BRANCHLESS)
 #pragma GCC unroll 8
         for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
             latest_square_size_value = check_square_branchless(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
-    else
+    else if (which_check_square == CHECK_SQUARE_LOW_O_COUNT)
 #pragma GCC unroll 8
         for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
             latest_square_size_value = check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
+    else if (which_check_square == CHECK_SQUARE_HIGH_O_COUNT) {
+        for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x) {
+            size_t o_count = 0;
+            while (board_info->board[solver->y * board_info->num_cols + solver->x + o_count] == 'o') {
+                square_size_values[solver->y & 1][solver->x + o_count] = 0;
+                ++o_count;
+            }
+            solver->x += o_count;
+            if (o_count != 0)
+                latest_square_size_value = 0;
+            latest_square_size_value = check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
+        }
+    }
 
     uint32_t largest_square_size = solver->best.size;
     uint32_t largest_square_x;
