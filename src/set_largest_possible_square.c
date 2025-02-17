@@ -287,9 +287,11 @@ static inline void check_line(const struct board_information *board_info, uint32
 
     uint32_t latest_square_size_value = 0;
     if (use_branchless)
+#pragma GCC unroll 8
         for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
             latest_square_size_value = check_square_branchless(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
     else
+#pragma GCC unroll 8
         for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
             latest_square_size_value = check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
 
