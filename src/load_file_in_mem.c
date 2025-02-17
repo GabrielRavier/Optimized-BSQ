@@ -13,16 +13,16 @@ bool load_file_in_mem(struct loaded_file *result, const char *filename)
 
     if (fd < 0)
         return false;
-    if (fstat(fd, &file_info) < 0) {
+    if (fstat(fd, &file_info) < 0 || file_info.st_size < 0) {
         close(fd);
         return false;
     }
-    result->data = mmap(NULL, file_info.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    result->data = (char *)mmap(NULL, (size_t)file_info.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (result->data == MAP_FAILED) {
         close(fd);
         return false;
     }
-    result->size = file_info.st_size;
+    result->size = (size_t)file_info.st_size;
     close(fd);
     return true;
 }

@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-__attribute__((hot, always_inline))
+__attribute__((hot, always_inline, pure))
 static inline bool check_whole_board_is_dots_and_os_except_newlines_no_simd(const struct board_information *board_info)
 {
     for (size_t i = 0; i < board_info->num_rows; ++i) {
@@ -21,8 +21,8 @@ static inline bool check_whole_board_is_dots_and_os_except_newlines_no_simd(cons
     return true;
 }
 
-__attribute__((hot))
-static bool check_whole_board_is_dots_and_os_except_newlines(const struct board_information *board_info)
+__attribute__((hot, always_inline, pure))
+static inline bool check_whole_board_is_dots_and_os_except_newlines(const struct board_information *board_info)
 {
     if (board_info->num_cols < 17)
         return check_whole_board_is_dots_and_os_except_newlines_no_simd(board_info);
@@ -56,7 +56,7 @@ static bool check_whole_board_is_dots_and_os_except_newlines(const struct board_
 
     for (; i < (board_info->num_rows * board_info->num_cols) - 16; i += 16) {
         __m128i row = _mm_loadu_si128((__m128i *)(board_info->board + i));
-        uint32_t cmpstri_result = _mm_cmpistri(cmpistri_mask, row, _SIDD_NEGATIVE_POLARITY | _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_LEAST_SIGNIFICANT);
+        uint32_t cmpstri_result = (uint32_t)_mm_cmpistri(cmpistri_mask, row, _SIDD_NEGATIVE_POLARITY | _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_LEAST_SIGNIFICANT);
         bool carry = _mm_cmpistrc(cmpistri_mask, row, _SIDD_NEGATIVE_POLARITY | _SIDD_UBYTE_OPS | _SIDD_CMP_EQUAL_ANY | _SIDD_LEAST_SIGNIFICANT);
         if (carry) {
             // Make sure the non o/dot characters are newlines, and that they are at the right position
@@ -88,18 +88,18 @@ bool verify_file(struct loaded_file *file_as_buffer,
     struct board_information *board_info)
 {
     char *after_number;
-    board_info->num_rows = strtol(file_as_buffer->data, &after_number, 0);
+    board_info->num_rows = (size_t)strtol(file_as_buffer->data, &after_number, 0);
     if (*after_number != '\n' || after_number == file_as_buffer->data)
         return false;
     board_info->board = after_number + 1;
 
-    char *memchr_result = memchr(board_info->board, '\n', file_as_buffer->size - (board_info->board - file_as_buffer->data));
+    char *memchr_result = (char *)memchr(board_info->board, '\n', file_as_buffer->size - (board_info->board - file_as_buffer->data));
     if (memchr_result == NULL)
         return false;
-    board_info->num_cols = memchr_result - board_info->board + 1;
+    board_info->num_cols = (size_t)(memchr_result - board_info->board + 1);
 
     size_t expected_size = board_info->num_rows * board_info->num_cols;
-    if (expected_size != (file_as_buffer->size - (board_info->board - file_as_buffer->data)))
+    if (expected_size != (file_as_buffer->size - (size_t)(board_info->board - file_as_buffer->data)))
         return false;
 
     return check_whole_board_is_dots_and_os_except_newlines_no_simd(board_info); // The SIMD version is still slower than strspn 😭

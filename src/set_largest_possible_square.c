@@ -9,6 +9,8 @@
 // at https://gist.github.com/Sigmanificient/05387fa40bf9f4e38cc1da7727ac382b
 // (that code doesn't actually work even on the 10000x10000 boards it's supposed to work on, but it's a good starting point :p)
 
+typedef uint32_t uint32_may_alias_t __attribute__((may_alias));
+
 struct square {
     uint32_t size;
     uint32_t x;
@@ -21,15 +23,15 @@ struct solver {
     struct square best;
 };
 
-__attribute__((hot))
-static int min(uint32_t x, uint32_t y)
+__attribute__((hot, always_inline))
+static inline uint32_t min(uint32_t x, uint32_t y)
 {
     return x < y ? x : y;
 }
 
 // Returns the resulting square - so that it can be passed back as the previous square size value for the next square
-__attribute__((hot))
-static uint32_t check_square(const char processed_square, uint32_t *restrict square_size_values, uint32_t *restrict prev_row_square_size_values, struct solver *solver, uint32_t prev_square_size_value)
+__attribute__((hot, always_inline))
+static inline uint32_t check_square(const char processed_square, uint32_t *restrict square_size_values, uint32_t *restrict prev_row_square_size_values, struct solver *solver, uint32_t prev_square_size_value)
 {
     register uint32_t square_size;
 
@@ -50,8 +52,8 @@ static uint32_t check_square(const char processed_square, uint32_t *restrict squ
 
 // If there is a value in the array that is larger than the current maximum, the maximum value is updated to that value
 // Note that the position shall always be that of the earliest maximum value in the array - that is, if there are multiple samples of the maximum value, the index of the first one must be returned
-__attribute__((hot))
-static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint32_t *max, uint32_t *pos)
+__attribute__((hot, always_inline))
+static inline void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint32_t *max, uint32_t *pos)
 {
     if (size == 0)
         return;
@@ -63,8 +65,8 @@ static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint3
         }
     }
 #elif !defined(__AVX2__)
-    __m128i *arr128 = (__m128i *)arr;
-    __m128i *arr128_end = (__m128i *)(arr + size - 4);
+    const __m128i *arr128 = (const __m128i *)arr;
+    const __m128i *arr128_end = (const __m128i *)(arr + size - 4);
 
     // We cache the value of _mm_set1_epi32(*max) to avoid having to reload it on every loop iteration (we only need to reload it when *max is updated)
     __m128i max_splatted = _mm_set1_epi32(*max);
@@ -79,9 +81,9 @@ static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint3
         if (_mm_movemask_epi8(cmp)) {
             // Find the largest value in those and update the maximum and position
             for (size_t i = 0; i < 4; ++i)
-                if (((uint32_t *)&values)[i] > *max) {
-                    *max = ((uint32_t *)&values)[i];
-                    *pos = (uint32_t *)arr128 - arr + i;
+                if (((const uint32_may_alias_t *)&values)[i] > *max) {
+                    *max = ((const uint32_may_alias_t *)&values)[i];
+                    *pos = (const uint32_t *)arr128 - arr + i;
                 }
 
             // *max has been updated, so max_splatted is now. Update it too.
@@ -89,22 +91,22 @@ static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint3
         }
     }
 
-    for (size_t i = (uint32_t *)arr128 - arr; i < size; ++i) {
+    for (size_t i = (const uint32_t *)arr128 - arr; i < size; ++i) {
         if (arr[i] > *max) {
             *max = arr[i];
             *pos = i;
         }
     }
 #else
-    __m256i *arr256 = (__m256i *)arr;
-    __m256i *arr256_end = (__m256i *)(arr + size - 8);
+    const __m256i *arr256 = (const __m256i *)arr;
+    const __m256i *arr256_end = (const __m256i *)(arr + size - 9);
 
     // We cache the value of _mm256_set1_epi32(*max) to avoid having to reload it on every loop iteration (we only need to reload it when *max is updated)
     __m256i max_splatted = _mm256_set1_epi32(*max);
 
     for (; arr256 < arr256_end; ++arr256) {
         // First load the values
-        __m256i values = _mm256_loadu_si256(arr256);
+        const __m256i values = _mm256_loadu_si256(arr256);
 
         // Check if any of the values are larger than the current maximum
         __m256i cmp = _mm256_cmpgt_epi32(values, max_splatted);
@@ -112,9 +114,9 @@ static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint3
         if (_mm256_movemask_epi8(cmp)) {
             // Find the largest value in those and update the maximum and position
             for (size_t i = 0; i < 8; ++i)
-                if (((uint32_t *)&values)[i] > *max) {
-                    *max = ((uint32_t *)&values)[i];
-                    *pos = (uint32_t *)arr256 - arr + i;
+                if (((const uint32_may_alias_t *)&values)[i] > *max) {
+                    *max = ((const uint32_may_alias_t *)&values)[i];
+                    *pos = (const uint32_t *)arr256 - arr + i;
                 }
 
             // *max has been updated, so max_splatted is now. Update it too.
@@ -122,7 +124,7 @@ static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint3
         }
     }
 
-    for (size_t i = (uint32_t *)arr256 - arr; i < size; ++i) {
+    for (size_t i = (const uint32_t *)arr256 - arr; i < size; ++i) {
         if (arr[i] > *max) {
             *max = arr[i];
             *pos = i;
@@ -132,8 +134,8 @@ static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint3
 }
 
 #ifdef __SSE2__
-__attribute__((hot))
-static __m128i do_m128i_min_epu32(__m128i a, __m128i b)
+__attribute__((hot, always_inline))
+static inline __m128i do_m128i_min_epu32(__m128i a, __m128i b)
 {
 #if !defined(__SSE4_1__)
     __m128i cmp = _mm_cmplt_epi32(a, b); // Note: Technically wrong but we're not working with numbers above 2**31 here so it's fine
@@ -149,8 +151,8 @@ static __m128i do_m128i_min_epu32(__m128i a, __m128i b)
 // arr[1] = min(arr[1], arr[0])
 // arr[2] = min(arr[2], arr[1])
 // ...
-__attribute__((hot))
-static void set_each_val_to_min_of_itself_and_previous_val(uint32_t *arr, size_t size)
+__attribute__((hot, always_inline))
+static inline void set_each_val_to_min_of_itself_and_previous_val(uint32_t *arr, size_t size)
 {
 #if !defined(__SSE2__)
 
@@ -196,8 +198,8 @@ static void set_each_val_to_min_of_itself_and_previous_val(uint32_t *arr, size_t
 #endif
 }
 
-__attribute__((hot))
-static void check_line(const struct board_information *board_info, uint32_t square_size_values[2][board_info->num_cols], struct solver *solver)
+__attribute__((hot, always_inline))
+static inline void check_line(const struct board_information *board_info, uint32_t square_size_values[2][board_info->num_cols + 1], struct solver *solver)
 {
     if (solver->y != 0)
         set_each_val_to_min_of_itself_and_previous_val(square_size_values[(solver->y + 1) & 1], board_info->num_cols); // See check_square min() call as for why we do this
@@ -223,7 +225,7 @@ static void check_line(const struct board_information *board_info, uint32_t squa
 __attribute__((hot))
 static void find_largest_possible_square(const struct board_information *board_info, struct solver *solver)
 {
-    uint32_t square_size_values[2][board_info->num_cols]; // vla moment (maybe revise this later lol)
+    uint32_t square_size_values[2][board_info->num_cols + 1]; // vla moment (maybe revise this later lol)
     memset(square_size_values, 0, sizeof(square_size_values));
 
     for (solver->y = 0; solver->y < board_info->num_rows; ++solver->y)
