@@ -22,11 +22,9 @@ struct solver {
 };
 
 __attribute__((hot))
-static int min3(uint32_t x, uint32_t y, uint32_t z)
+static int min(uint32_t x, uint32_t y)
 {
-    if (x > y)
-        return (y < z) ? y : z;
-    return (x < z) ? x : z;
+    return x < y ? x : y;
 }
 
 // Returns the resulting square - so that it can be passed back as the previous square size value for the next square
@@ -40,8 +38,10 @@ static uint32_t check_square(const char processed_square, uint32_t *restrict squ
         return 0;
     }
 
-    square_size = 1 + min3(
-        prev_row_square_size_values[(size_t)solver->x - 1],
+    // We have already precalculated min(prev_row_square_size_values[solver->x - 1], prev_row_square_size_values[solver->x]) for every valid x in set_each_val_to_min_of_itself_and_previous_val,
+    // so we can just use that precalculated value here instead of recalculating it
+    // (We do that because we can precalculate it using SIMD instructions, which is faster than doing it here)
+    square_size = 1 + min(
         prev_row_square_size_values[solver->x],
         prev_square_size_value
     );
@@ -133,16 +133,84 @@ static void find_u32_arr_larger_with_pos(const uint32_t *arr, size_t size, uint3
 #endif
 }
 
+#ifdef __SSE2__
+__attribute__((hot))
+static __m128i do_m128i_min_epu32(__m128i a, __m128i b)
+{
+#if !defined(__SSE4_1__)
+    __m128i cmp = _mm_cmplt_epi32(a, b); // Note: Technically wrong but we're not working with numbers above 2**31 here so it's fine
+    return _mm_or_si128(_mm_and_si128(cmp, a), _mm_andnot_si128(cmp, b));
+#else
+    return _mm_min_epu32(a, b);
+#endif
+}
+#endif
+
+// Note that we assume the "previous value" is 0 for the first element (this is correct for our purposes)
+// arr[0] = min(arr[0], 0)
+// arr[1] = min(arr[1], arr[0])
+// arr[2] = min(arr[2], arr[1])
+// ...
+__attribute__((hot))
+static void set_each_val_to_min_of_itself_and_previous_val(uint32_t *arr, size_t size)
+{
+#if !defined(__SSE2__)
+
+    uint32_t prev_val = 0;
+    for (size_t i = 0; i < size; ++i) {
+        uint32_t next_val = arr[i];
+        arr[i] = min(next_val, prev_val);
+        prev_val = next_val;
+    }
+
+#elif !defined(__AVX2__)
+
+    // Go backwards to avoid having to store the previous value
+    uint32_t *arr_iter_backwards = arr + size;
+    while (arr_iter_backwards - arr >= 5) {
+        arr_iter_backwards -= 4;
+        __m128i current_vals = _mm_loadu_si128((__m128i *)arr_iter_backwards);
+        __m128i previous_vals = _mm_loadu_si128((__m128i *)(arr_iter_backwards - 1));
+        __m128i min_vals = do_m128i_min_epu32(current_vals, previous_vals);
+        _mm_storeu_si128((__m128i *)arr_iter_backwards, min_vals);
+    }
+
+    for (size_t i = arr_iter_backwards - arr; i > 0; --i)
+        arr[i] = min(arr[i], arr[i - 1]);
+    arr[0] = min(arr[0], 0);
+
+#else
+
+    // Go backwards to avoid having to store the previous value
+    uint32_t *arr_iter_backwards = arr + size;
+    while (arr_iter_backwards - arr >= 9) {
+        arr_iter_backwards -= 8;
+        __m256i current_vals = _mm256_loadu_si256((__m256i *)arr_iter_backwards);
+        __m256i previous_vals = _mm256_loadu_si256((__m256i *)(arr_iter_backwards - 1));
+        __m256i min_vals = _mm256_min_epu32(current_vals, previous_vals);
+        _mm256_storeu_si256((__m256i *)arr_iter_backwards, min_vals);
+    }
+
+    for (size_t i = arr_iter_backwards - arr; i > 0; --i)
+        arr[i] = min(arr[i], arr[i - 1]);
+    arr[0] = min(arr[0], 0);
+
+#endif
+}
+
 __attribute__((hot))
 static void check_line(const struct board_information *board_info, uint32_t square_size_values[2][board_info->num_cols], struct solver *solver)
 {
+    if (solver->y != 0)
+        set_each_val_to_min_of_itself_and_previous_val(square_size_values[(solver->y + 1) & 1], board_info->num_cols); // See check_square min() call as for why we do this
+
     uint32_t latest_square_size_value = 0;
     for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
-        latest_square_size_value = check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1] + 1, square_size_values[(solver->y + 1) & 1] + 1, solver, latest_square_size_value);
+        latest_square_size_value = check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
 
     uint32_t largest_square_size = solver->best.size;
     uint32_t largest_square_x;
-    find_u32_arr_larger_with_pos(square_size_values[solver->y & 1] + 1, board_info->num_cols - 1, &largest_square_size, &largest_square_x);
+    find_u32_arr_larger_with_pos(square_size_values[solver->y & 1], board_info->num_cols - 1, &largest_square_size, &largest_square_x);
 
     if (largest_square_size > solver->best.size) {
         solver->best.size = largest_square_size;
@@ -154,7 +222,7 @@ static void check_line(const struct board_information *board_info, uint32_t squa
 __attribute__((hot))
 static void find_largest_possible_square(const struct board_information *board_info, struct solver *solver)
 {
-    uint32_t square_size_values[2][board_info->num_cols]; // vla moment (maybe revise this later lol). Note that we add an extra element than necessary, so that we can avoid having to check for the beginning of the array in the loop
+    uint32_t square_size_values[2][board_info->num_cols]; // vla moment (maybe revise this later lol)
     memset(square_size_values, 0, sizeof(square_size_values));
 
     for (solver->y = 0; solver->y < board_info->num_rows; ++solver->y)
