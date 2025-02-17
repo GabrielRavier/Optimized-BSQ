@@ -33,10 +33,8 @@ static uint32_t check_square(const char processed_square, uint32_t *restrict squ
 {
     register uint32_t square_size;
 
-    if (processed_square == 'o') {
-        square_size_values[solver->x] = 0;
-        return 0;
-    }
+    if (processed_square == 'o')
+        return 0; // We don't need to store a 0 because memset has already set the entire array to 0. We do things this way because it happens to be faster
 
     // We have already precalculated min(prev_row_square_size_values[solver->x - 1], prev_row_square_size_values[solver->x]) for every valid x in set_each_val_to_min_of_itself_and_previous_val,
     // so we can just use that precalculated value here instead of recalculating it
@@ -203,6 +201,9 @@ static void check_line(const struct board_information *board_info, uint32_t squa
 {
     if (solver->y != 0)
         set_each_val_to_min_of_itself_and_previous_val(square_size_values[(solver->y + 1) & 1], board_info->num_cols); // See check_square min() call as for why we do this
+
+    // Set the entire values array to 0 to handle 'o's (check_square specifically doesn't do so)
+    memset(square_size_values[solver->y & 1], 0, sizeof(square_size_values[solver->y & 1]));
 
     uint32_t latest_square_size_value = 0;
     for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
