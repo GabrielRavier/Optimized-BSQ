@@ -9,6 +9,9 @@
 // at https://gist.github.com/Sigmanificient/05387fa40bf9f4e38cc1da7727ac382b
 // (that code doesn't actually work even on the 10000x10000 boards it's supposed to work on, but it's a good starting point :p)
 
+#define likely(x)       __builtin_expect((x),1)
+#define unlikely(x)     __builtin_expect((x),0)
+
 typedef uint32_t uint32_may_alias_t __attribute__((may_alias));
 
 struct square {
@@ -31,11 +34,33 @@ static inline uint32_t min(uint32_t x, uint32_t y)
 
 // Returns the resulting square - so that it can be passed back as the previous square size value for the next square
 __attribute__((hot, always_inline))
-static inline uint32_t check_square(const char processed_square, uint32_t *restrict square_size_values, uint32_t *restrict prev_row_square_size_values, struct solver *solver, uint32_t prev_square_size_value)
+static inline uint32_t check_square_low_o_count(const char processed_square, uint32_t *restrict square_size_values, uint32_t *restrict prev_row_square_size_values, struct solver *solver, uint32_t prev_square_size_value)
 {
     register uint32_t square_size;
 
-    if (processed_square == 'o') {
+    if (unlikely(processed_square == 'o')) {
+        square_size_values[solver->x] = 0;
+        return 0;
+    }
+    // We have already precalculated min(prev_row_square_size_values[solver->x - 1], prev_row_square_size_values[solver->x]) for every valid x in set_each_val_to_min_of_itself_and_previous_val,
+    // so we can just use that precalculated value here instead of recalculating it
+    // (We do that because we can precalculate it using SIMD instructions, which is faster than doing it here)
+    square_size = 1 + min(
+        prev_row_square_size_values[solver->x],
+        prev_square_size_value
+    );
+
+    square_size_values[solver->x] = square_size;
+    return square_size;
+}
+
+// Returns the resulting square - so that it can be passed back as the previous square size value for the next square
+__attribute__((hot, always_inline))
+static inline uint32_t check_square_high_o_count(const char processed_square, uint32_t *restrict square_size_values, uint32_t *restrict prev_row_square_size_values, struct solver *solver, uint32_t prev_square_size_value)
+{
+    register uint32_t square_size;
+
+    if (likely(processed_square == 'o')) {
         square_size_values[solver->x] = 0;
         return 0;
     }
@@ -297,7 +322,7 @@ static inline void check_line(const struct board_information *board_info, uint32
     else if (which_check_square == CHECK_SQUARE_LOW_O_COUNT)
 #pragma GCC unroll 8
         for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
-            latest_square_size_value = check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
+            latest_square_size_value = check_square_low_o_count(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
     else if (which_check_square == CHECK_SQUARE_HIGH_O_COUNT) {
         for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x) {
             size_t o_count = 0;
@@ -308,7 +333,7 @@ static inline void check_line(const struct board_information *board_info, uint32
             solver->x += o_count;
             if (o_count != 0)
                 latest_square_size_value = 0;
-            latest_square_size_value = check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
+            latest_square_size_value = check_square_high_o_count(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
         }
     }
 
