@@ -29,7 +29,7 @@ do_one_run()
 
     local random_number_between_0_and_1=$(printf 0; ( printf 'scale=19; '; shuf -i1-10000000000000000000 -n1 | tr -d '\n'; echo ' / 10000000000000000000'; ) | bc)
 
-    echo "Generating map..."
+    printf "Generating map with a density of %s...\n" "$random_number_between_0_and_1"
 
     # Generate a map
     "$EXE_MAP_GENERATOR" 10000 "$random_number_between_0_and_1" $(shuf -i0-2147483647 -n1) >"$temp_generated_map"

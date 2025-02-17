@@ -35,9 +35,10 @@ static inline uint32_t check_square(const char processed_square, uint32_t *restr
 {
     register uint32_t square_size;
 
-    if (processed_square == 'o')
-        return 0; // We don't need to store a 0 because memset has already set the entire array to 0. We do things this way because it happens to be faster
-
+    if (processed_square == 'o') {
+        square_size_values[solver->x] = 0;
+        return 0;
+    }
     // We have already precalculated min(prev_row_square_size_values[solver->x - 1], prev_row_square_size_values[solver->x]) for every valid x in set_each_val_to_min_of_itself_and_previous_val,
     // so we can just use that precalculated value here instead of recalculating it
     // (We do that because we can precalculate it using SIMD instructions, which is faster than doing it here)
@@ -49,6 +50,28 @@ static inline uint32_t check_square(const char processed_square, uint32_t *restr
     square_size_values[solver->x] = square_size;
     return square_size;
 }
+
+// Returns the resulting square - so that it can be passed back as the previous square size value for the next square
+// Branchless version of check_square for when we have an inconvenient number of 'o's (amount of 'o's vaguely equal to amount of '.'s) strewn around in random manner
+__attribute__((hot, always_inline))
+static inline uint32_t check_square_branchless(const char processed_square, uint32_t *restrict square_size_values, uint32_t *restrict prev_row_square_size_values, struct solver *solver, uint32_t prev_square_size_value)
+{
+    register uint32_t square_size;
+    bool is_o = processed_square == 'o';
+
+    // We have already precalculated min(prev_row_square_size_values[solver->x - 1], prev_row_square_size_values[solver->x]) for every valid x in set_each_val_to_min_of_itself_and_previous_val,
+    // so we can just use that precalculated value here instead of recalculating it
+    // (We do that because we can precalculate it using SIMD instructions, which is faster than doing it here)
+    square_size = 1 + min(
+        prev_row_square_size_values[solver->x],
+        prev_square_size_value
+    );
+
+    square_size *= !is_o; // GCC doesn't know how to convert this into a branch, so we use this to make the function branchless
+    square_size_values[solver->x] = square_size;
+    return square_size;
+}
+
 
 // If there is a value in the array that is larger than the current maximum, the maximum value is updated to that value
 // Note that the position shall always be that of the earliest maximum value in the array - that is, if there are multiple samples of the maximum value, the index of the first one must be returned
@@ -198,18 +221,77 @@ static inline void set_each_val_to_min_of_itself_and_previous_val(uint32_t *arr,
 #endif
 }
 
+// From https://gist.github.com/powturbo/456edcae788a61ebe2fc and https://gist.github.com/powturbo/2b06a84b6008dfffef11e53edba297d3
+#if defined(__AVX2__)
+size_t count_val_in_mem(const void *s, int c, size_t n) {
+    __m256i cv = _mm256_set1_epi8(c), zv = _mm256_setzero_si256(), sum = zv, acr0,acr1,acr2,acr3;
+    const char *p,*pe;
+	for(p = s; p != (char *)s+(n- (n % (252*32)));) {
+	  for(acr0 = acr1 = acr2 = acr3 = zv,pe = p+252*32; p != pe; p += 128) {
+		acr0 = _mm256_add_epi8(acr0, _mm256_cmpeq_epi8(cv, _mm256_lddqu_si256((const __m256i *)p)));
+		acr1 = _mm256_add_epi8(acr1, _mm256_cmpeq_epi8(cv, _mm256_lddqu_si256((const __m256i *)(p+32))));
+		acr2 = _mm256_add_epi8(acr2, _mm256_cmpeq_epi8(cv, _mm256_lddqu_si256((const __m256i *)(p+64))));
+		acr3 = _mm256_add_epi8(acr3, _mm256_cmpeq_epi8(cv, _mm256_lddqu_si256((const __m256i *)(p+96)))); __builtin_prefetch(p+1024);
+	  }
+      sum = _mm256_add_epi64(sum, _mm256_sad_epu8(_mm256_sub_epi8(zv, acr0), zv));
+      sum = _mm256_add_epi64(sum, _mm256_sad_epu8(_mm256_sub_epi8(zv, acr1), zv));
+      sum = _mm256_add_epi64(sum, _mm256_sad_epu8(_mm256_sub_epi8(zv, acr2), zv));
+      sum = _mm256_add_epi64(sum, _mm256_sad_epu8(_mm256_sub_epi8(zv, acr3), zv));
+    }
+    for(acr0=zv; p+32 < (char *)s + n; p += 32)
+      acr0 = _mm256_add_epi8(acr0, _mm256_cmpeq_epi8(cv, _mm256_lddqu_si256((const __m256i *)p)));
+    sum = _mm256_add_epi64(sum, _mm256_sad_epu8(_mm256_sub_epi8(zv, acr0), zv));
+    size_t count = _mm256_extract_epi64(sum, 0) + _mm256_extract_epi64(sum, 1) + _mm256_extract_epi64(sum, 2) + _mm256_extract_epi64(sum, 3);
+    while(p != (char *)s + n) count += *p++ == c;
+    return count;
+}
+#elif defined(__SSE2__)
+size_t count_val_in_mem(const void *s, int c, size_t n) {
+    __m128i cv = _mm_set1_epi8(c), sum = _mm_setzero_si128(), acr0,acr1,acr2,acr3;
+    const char *p,*pe;
+	for(p = s; p != (char *)s+(n- (n % (252*16)));) {
+	  for(acr0 = acr1 = acr2 = acr3 = _mm_setzero_si128(),pe = p+252*16; p != pe; p += 64) {
+		acr0 = _mm_add_epi8(acr0, _mm_cmpeq_epi8(cv, _mm_loadu_si128((const __m128i *)p)));
+		acr1 = _mm_add_epi8(acr1, _mm_cmpeq_epi8(cv, _mm_loadu_si128((const __m128i *)(p+16))));
+		acr2 = _mm_add_epi8(acr2, _mm_cmpeq_epi8(cv, _mm_loadu_si128((const __m128i *)(p+32))));
+		acr3 = _mm_add_epi8(acr3, _mm_cmpeq_epi8(cv, _mm_loadu_si128((const __m128i *)(p+48)))); __builtin_prefetch(p+1024);
+	  }
+      sum = _mm_add_epi64(sum, _mm_sad_epu8(_mm_sub_epi8(_mm_setzero_si128(), acr0), _mm_setzero_si128()));
+      sum = _mm_add_epi64(sum, _mm_sad_epu8(_mm_sub_epi8(_mm_setzero_si128(), acr1), _mm_setzero_si128()));
+      sum = _mm_add_epi64(sum, _mm_sad_epu8(_mm_sub_epi8(_mm_setzero_si128(), acr2), _mm_setzero_si128()));
+      sum = _mm_add_epi64(sum, _mm_sad_epu8(_mm_sub_epi8(_mm_setzero_si128(), acr3), _mm_setzero_si128()));
+    }
+    size_t count = _mm_extract_epi64(sum, 0) + _mm_extract_epi64(sum, 1);
+    while(p != (char *)s + n) count += *p++ == c;
+    return count;
+}
+#endif
+
 __attribute__((hot, always_inline))
 static inline void check_line(const struct board_information *board_info, uint32_t square_size_values[2][board_info->num_cols + 1], struct solver *solver)
 {
     if (solver->y != 0)
         set_each_val_to_min_of_itself_and_previous_val(square_size_values[(solver->y + 1) & 1], board_info->num_cols); // See check_square min() call as for why we do this
 
-    // Set the entire values array to 0 to handle 'o's (check_square specifically doesn't do so)
-    memset(square_size_values[solver->y & 1], 0, sizeof(square_size_values[solver->y & 1]));
+
+    bool use_branchless = true;
+#if defined(__SSE2__)
+    if (board_info->num_cols > 500) {
+        size_t o_count = count_val_in_mem(board_info->board + solver->y * board_info->num_cols, 'o', board_info->num_cols);
+        if (o_count > board_info->num_cols / 2)
+            o_count = board_info->num_cols - o_count;
+        if (o_count < board_info->num_cols / 8)
+            use_branchless = false;
+    }
+#endif
 
     uint32_t latest_square_size_value = 0;
-    for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
-        latest_square_size_value = check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
+    if (use_branchless)
+        for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
+            latest_square_size_value = check_square_branchless(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
+    else
+        for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
+            latest_square_size_value = check_square(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
 
     uint32_t largest_square_size = solver->best.size;
     uint32_t largest_square_x;
