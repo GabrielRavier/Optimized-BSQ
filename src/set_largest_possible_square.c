@@ -277,10 +277,10 @@ static inline void check_line(const struct board_information *board_info, uint32
     bool use_branchless = true;
 #if defined(__SSE2__)
     if (board_info->num_cols > 500) {
-        size_t o_count = count_val_in_mem(board_info->board + solver->y * board_info->num_cols, 'o', board_info->num_cols);
+        size_t o_count = count_val_in_mem(board_info->board + solver->y * board_info->num_cols, 'o', board_info->num_cols / 8) * 8;
         if (o_count > board_info->num_cols / 2)
             o_count = board_info->num_cols - o_count;
-        if (o_count < board_info->num_cols / 8)
+        if (o_count < board_info->num_cols / 10)
             use_branchless = false;
     }
 #endif
