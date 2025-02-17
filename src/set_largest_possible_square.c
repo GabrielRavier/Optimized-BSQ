@@ -38,10 +38,9 @@ static inline uint32_t check_square_low_o_count(const char processed_square, uin
 {
     register uint32_t square_size;
 
-    if (unlikely(processed_square == 'o')) {
-        square_size_values[solver->x] = 0;
-        return 0;
-    }
+    if (unlikely(processed_square == 'o'))
+        return 0; // We don't need to store here because we've done so in the memset in check_line that's called before the check_square_low_o_count loop
+
     // We have already precalculated min(prev_row_square_size_values[solver->x - 1], prev_row_square_size_values[solver->x]) for every valid x in set_each_val_to_min_of_itself_and_previous_val,
     // so we can just use that precalculated value here instead of recalculating it
     // (We do that because we can precalculate it using SIMD instructions, which is faster than doing it here)
@@ -314,16 +313,30 @@ static inline void check_line(const struct board_information *board_info, uint32
     }
 #endif
 
+#define DO_ONE_ITERATION(check_square_version) \
+    latest_square_size_value = check_square_version(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value); \
+    ++solver->x;
+
+#define DO_TWO_ITERATIONS(check_square_version) DO_ONE_ITERATION(check_square_version) DO_ONE_ITERATION(check_square_version)
+#define DO_FOUR_ITERATIONS(check_square_version) DO_TWO_ITERATIONS(check_square_version) DO_TWO_ITERATIONS(check_square_version)
+#define DO_EIGHT_ITERATIONS(check_square_version) DO_FOUR_ITERATIONS(check_square_version) DO_FOUR_ITERATIONS(check_square_version)
+
     uint32_t latest_square_size_value = 0;
     if (which_check_square == CHECK_SQUARE_BRANCHLESS)
 #pragma GCC unroll 8
         for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
             latest_square_size_value = check_square_branchless(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
-    else if (which_check_square == CHECK_SQUARE_LOW_O_COUNT)
-#pragma GCC unroll 8
-        for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x)
+    else if (which_check_square == CHECK_SQUARE_LOW_O_COUNT) {
+        memset(square_size_values[solver->y & 1], 0, sizeof(uint32_t) * board_info->num_cols); // Handle the fact check_square_low_o_count doesn't set 'o' squares to 0
+
+        solver->x = 0;
+        if (board_info->num_cols > 9)
+            while (solver->x < board_info->num_cols - 9) {
+                DO_EIGHT_ITERATIONS(check_square_low_o_count)
+            }
+        for (; solver->x < board_info->num_cols - 1; ++solver->x)
             latest_square_size_value = check_square_low_o_count(board_info->board[solver->y * board_info->num_cols + solver->x], square_size_values[solver->y & 1], square_size_values[(solver->y + 1) & 1], solver, latest_square_size_value);
-    else if (which_check_square == CHECK_SQUARE_HIGH_O_COUNT) {
+    } else if (which_check_square == CHECK_SQUARE_HIGH_O_COUNT) {
         for (solver->x = 0; solver->x < board_info->num_cols - 1; ++solver->x) {
             size_t o_count = 0;
             while (board_info->board[solver->y * board_info->num_cols + solver->x + o_count] == 'o') {
